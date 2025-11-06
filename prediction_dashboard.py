@@ -181,8 +181,8 @@ if "Heart Disease" in model_choice:
             # Predict button
             if st.button("🔮 Predict Heart Disease Risk", type="primary", use_container_width=True):
                 
-                # Prepare input data (11 features)
-                input_data = np.array([[
+                # Prepare input data (11 features) as DataFrame to preserve feature names
+                input_data = pd.DataFrame([[
                     age,
                     int(sex.split()[-1].strip("()")),
                     int(cp.split()[0]),
@@ -194,7 +194,7 @@ if "Heart Disease" in model_choice:
                     int(exang.split()[-1].strip("()")),
                     oldpeak,
                     int(slope.split()[0])
-                ]])
+                ]], columns=metadata.get('feature_names', []))
                 
                 # Scale and predict
                 input_scaled = scaler.transform(input_data)
