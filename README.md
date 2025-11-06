@@ -2,16 +2,20 @@
 
 A complete machine learning analysis spanning **4 major experimental domains** with production-ready models, interactive dashboard, and comprehensive documentation.
 
+> ⚠️ **Note:** Large model files (3.5GB) are not included in this repository. See [Models Status](#️-important-pre-trained-models) below for details.
+
 ## 📊 Overview
 
 This project demonstrates advanced ML techniques across regression and classification tasks using weather (96,453 samples) and heart disease (1,190 samples) datasets.
 
 ### 🏆 Key Achievements
 
-- **4 Production Models** saved with complete metadata
+- **4 Production Models** with complete metadata (1 included, 3 reproducible)
 - **18,400+ CV Fits** across comprehensive GridSearch experiments
 - **Interactive Dashboard** with real-time predictions (Streamlit)
 - **39-page LaTeX Report** with detailed methodology and visualizations
+- **35+ Visualizations** - All included in repository
+- **Complete Source Code** - All training scripts available
 
 ## 🎯 Experimental Domains
 
@@ -51,10 +55,20 @@ This project demonstrates advanced ML techniques across regression and classific
 - ✅ **Distribution-Preserving Imputation** - Maintaining statistical integrity
 
 ### Production Ready
-- 📦 **Saved Models** - 4 models with joblib + metadata JSON
+- 📦 **Model Architecture** - Complete training pipelines and configurations
 - 🎨 **Interactive Dashboard** - Streamlit app with prediction interfaces
-- 📊 **35+ Visualizations** - Performance comparisons, feature importance, distributions
+- 📊 **35+ Visualizations** - All performance comparisons, feature importance, distributions
 - 📄 **Complete Documentation** - 39-page LaTeX report + Markdown
+
+### ✅ Included in Repository
+- ✅ All source code and training scripts
+- ✅ Complete datasets (96,453 + 1,190 samples)
+- ✅ All 35+ visualizations and plots
+- ✅ Heart Disease pre-trained model (15MB)
+- ✅ Model metadata for all 4 models
+- ✅ 39-page LaTeX documentation + PDF
+- ✅ Interactive Streamlit dashboard
+- ✅ Complete results CSVs and analysis
 
 ## 🛠️ Technology Stack
 
@@ -70,10 +84,10 @@ This project demonstrates advanced ML techniques across regression and classific
 ML tp0/
 ├── dashboard_v2.py                    # Interactive Streamlit dashboard
 ├── ml_pipeline_knn.py                 # Temperature regression pipeline
-├── ml_analysis.py                     # Heart disease classification
+├── ml_analysis.py                     # Heart disease classification (DEPRECATED)
 ├── multi_output_regression.py         # Multi-output experiments
 ├── encoding_comparison.py             # Weather classification
-├── Dataset1.csv                       # Weather data (96,453 samples)
+├── Dataset1.csv                       # Weather data (96,453 samples) ✅ INCLUDED
 ├── Dataset2/                          # Heart disease data
 │   └── classification_results/
 │       └── models/                    # Saved heart disease models
@@ -83,6 +97,47 @@ ML tp0/
 └── Overleaf_Upload/
     └── ML_Experiments_COMPLETE.tex    # 39-page LaTeX report
 ```
+
+## ⚠️ Important: Pre-trained Models
+
+**Note:** The large pre-trained model files (~3.5GB total) are **not included** in this repository due to GitHub's file size limits (100MB per file).
+
+### 📦 Models Status:
+
+| Model | Size | Status | Predictions Available |
+|-------|------|--------|----------------------|
+| Heart Disease | ~15 MB | ✅ **Included** | ✅ Working |
+| Temperature Ensemble | ~2.5 GB | ⚠️ **Not included** | ❌ Requires training |
+| Multi-Output | ~500 MB | ⚠️ **Not included** | ❌ Requires training |
+| Weather Classification | ~1 GB | ⚠️ **Not included** | ❌ Requires training |
+
+### 🔧 To Use This Repository:
+
+**Option 1: View Results & Explore Code** (No models needed)
+- Browse the code and methodology
+- View all visualizations (included)
+- Read the comprehensive documentation
+- Understand the experimental approach
+
+**Option 2: Train Models Yourself** (Reproduces everything)
+```bash
+# Temperature regression
+python ml_pipeline_knn.py
+
+# Heart disease classification (already has pre-trained model)
+python Dataset2/heart_disease_classification.py
+
+# Multi-output regression
+python multi_output_regression.py
+
+# Weather classification
+python encoding_comparison.py
+```
+
+**Option 3: Request Pre-trained Models**
+- Contact the repository owner for large model files
+- Models can be shared via Google Drive or similar services
+- All model metadata is included for reference
 
 ## 🎮 Quick Start
 
@@ -97,6 +152,8 @@ pip install -r requirements.txt
 ```bash
 streamlit run dashboard_v2.py
 ```
+
+**Note:** Only Heart Disease predictions will work without training other models first.
 
 The dashboard will open at `http://localhost:8502`
 
