@@ -122,8 +122,7 @@ ML tp0/
 **Option 2: Train Models Yourself** (Reproduces everything)
 ```bash
 # Temperature regression
-python ml_pipeline_knn.py
-
+python ensemble_methods_comparison
 # Heart disease classification (already has pre-trained model)
 python Dataset2/heart_disease_classification.py
 
@@ -131,7 +130,7 @@ python Dataset2/heart_disease_classification.py
 python multi_output_regression.py
 
 # Weather classification
-python encoding_comparison.py
+python ml_pipeline_knn.py
 ```
 
 **Option 3: Request Pre-trained Models**
