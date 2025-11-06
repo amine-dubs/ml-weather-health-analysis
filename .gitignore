@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Data files (optional - uncomment if datasets are too large)
+# *.csv
+# Dataset1.csv
+# Dataset2.csv
+
+# LaTeX
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large model files (>100MB - GitHub limit)
+ensemble_results/models/*.joblib
+weather_classification_models/*.joblib
+multi_output_results/models/*.joblib
+# Keep the smaller models
+# Dataset2/classification_results/models/*.joblib
+
+# Large result files (optional)
+# *.png
+# *.jpg
+# *.pdf

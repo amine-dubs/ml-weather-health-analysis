@@ -1,0 +1,48 @@
+{
+  "model_name": "Stacking",
+  "model_type": "StackingRegressor",
+  "description": "Sequential ensemble with 6 base models and Ridge meta-learner",
+  "performance_metrics": {
+    "r2_score": 0.7766450251688722,
+    "mse": 20.584232586851034,
+    "mae": 3.4717944665992437,
+    "explained_variance": 0.7766456886369706
+  },
+  "training_details": {
+    "training_time_seconds": 193.94299697875977,
+    "n_samples_train": 77162,
+    "n_samples_test": 19291,
+    "n_features": 8
+  },
+  "ensemble_configuration": {
+    "n_base_models": 6,
+    "base_models": [
+      "xgb",
+      "rf",
+      "gb",
+      "et",
+      "ridge",
+      "lasso"
+    ],
+    "meta_learner": "Ridge (alpha=1.0)"
+  },
+  "feature_names": [
+    "Summary",
+    "Precip Type",
+    "Humidity",
+    "Wind Speed (km/h)",
+    "Wind Bearing (degrees)",
+    "Visibility (km)",
+    "Loud Cover",
+    "Pressure (millibars)"
+  ],
+  "preprocessing": {
+    "scaling": "StandardScaler",
+    "imputation": "KNNImputer (n_neighbors=5)",
+    "dropped_features": [
+      "Apparent Temperature (C)",
+      "Formatted Date",
+      "Daily Summary"
+    ]
+  }
+}

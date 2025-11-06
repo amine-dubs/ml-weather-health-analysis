@@ -1,0 +1,64 @@
+{
+  "model_name": "Random Forest_NoNorm",
+  "model_type": "RandomForestClassifier",
+  "normalization": "None",
+  "performance_metrics": {
+    "auc_score": 0.8492850598383219,
+    "accuracy": 0.6474259863711848
+  },
+  "training_details": {
+    "n_samples_train": 69851,
+    "n_samples_test": 17463,
+    "n_features": 31,
+    "n_classes": 4
+  },
+  "target_classes": [
+    "Clear",
+    "Mostly Cloudy",
+    "Overcast",
+    "Partly Cloudy"
+  ],
+  "feature_names": [
+    "Temperature (C)",
+    "Apparent Temperature (C)",
+    "Humidity",
+    "Wind Speed (km/h)",
+    "Wind Bearing (degrees)",
+    "Visibility (km)",
+    "Loud Cover",
+    "Pressure (millibars)",
+    "Year",
+    "Month",
+    "Day",
+    "Hour",
+    "Month_sin",
+    "Month_cos",
+    "Hour_sin",
+    "Hour_cos",
+    "Precip_Type_encoded",
+    "Temp_Humidity_Interaction",
+    "Feels_Like_Diff",
+    "Temp_Squared",
+    "Wind_Speed_Squared",
+    "Wind_N_S",
+    "Wind_E_W",
+    "Pressure_Temp_Interaction",
+    "Low_Pressure",
+    "High_Pressure",
+    "Visibility_Humidity_Ratio",
+    "Cloud_Humidity_Interaction",
+    "Is_Winter",
+    "Is_Summer",
+    "Is_Day"
+  ],
+  "preprocessing": {
+    "imputation": "IterativeImputer (BayesianRidge) or Distribution Sampling",
+    "feature_engineering": "Temporal, interactions, polynomial features",
+    "dropped_columns": [
+      "Apparent Temperature (C)",
+      "Formatted Date",
+      "Daily Summary",
+      "Loud Cover"
+    ]
+  }
+}

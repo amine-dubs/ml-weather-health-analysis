@@ -1,0 +1,40 @@
+Make auc the main metric in the cancer classification Saving the best classification model (to use it in the dashboard to predict future observations later)
+ In the models add:
+svm (rbf, poly, sig...) 
+Add svm linear too
+Add knn with grid search it might give better results.
+Xgboost with grid search
+
+Use the same png names so the pictures in the documentation and dashboard updates automatically, then we will update the written results.
+
+In a new python file:
+Try optimising the xgboost to get a better auc, if it's better than our best model save it
+
+Update the documentation (without recompiling bc there still some other results to add) and dashboard with the new results.
+
+
+
+Now, In the temperature regression task, 
+Save the best model
+
+In a new python file:
+try predicting two features, leave apparent temperature and predict pressure and humidity .
+Save the best model
+
+
+Now, again, Edit the documentation with the new results, and all the new visualisations, include all the details from pre processing every dataset to experiments and conclusions
+
+Also, edit the dashboard with the new results and visualisation. 
+add to the dashboard a prediction section where the user can input the necessary features for classifing weather, or cancer or predicting temperature or both humidity and pressure using the best models we saved with the necessary pre processing.
+
+Again, Add to the dashboard a prediction section where the user can input the necessary features for classifing weather, or cancer or predicting temperature or both humidity and pressure using the best models we saved
+ 
+Tp1:
+We want to visualise the cancer ds in 2d
+Try feature reduction using:
+Pca
+Open t-sne
+Mds
+Umap
+Usomap
+And compare the visualisation with kmeans clustering

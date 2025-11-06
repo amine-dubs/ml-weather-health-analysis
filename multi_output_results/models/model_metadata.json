@@ -1,0 +1,52 @@
+{
+  "model_name": "XGBoost_MultiOutput_GridSearch",
+  "model_type": "MultiOutputRegressor(XGBRegressor)",
+  "target_variables": [
+    "Pressure (millibars)",
+    "Humidity"
+  ],
+  "normalization": "No Scaling",
+  "best_parameters": {
+    "n_estimators": 200,
+    "max_depth": 9,
+    "learning_rate": 0.05,
+    "min_child_weight": 3,
+    "subsample": 0.9,
+    "colsample_bytree": 0.9
+  },
+  "performance_metrics": {
+    "pressure": {
+      "r2_score": "See model_performance_summary.csv",
+      "mse": "See model_performance_summary.csv",
+      "mae": "See model_performance_summary.csv"
+    },
+    "humidity": {
+      "r2_score": "See model_performance_summary.csv",
+      "mse": "See model_performance_summary.csv",
+      "mae": "See model_performance_summary.csv"
+    },
+    "average": {
+      "r2_score": "See model_performance_summary.csv",
+      "mse": "See model_performance_summary.csv",
+      "mae": "See model_performance_summary.csv"
+    }
+  },
+  "training_details": {
+    "n_samples_train": "Approximately 80% of dataset",
+    "n_samples_test": "Approximately 20% of dataset",
+    "n_features": "Unknown",
+    "gridsearch_completed": true,
+    "total_cv_fits": 1080
+  },
+  "feature_names": [],
+  "preprocessing": {
+    "imputation": "KNNImputer (n_neighbors=5)",
+    "dropped_columns": [
+      "Formatted Date",
+      "Daily Summary"
+    ],
+    "zero_pressure_handled": true,
+    "zero_pressure_count": 1288
+  },
+  "note": "Model trained successfully. Performance metrics available in model_performance_summary.csv"
+}
