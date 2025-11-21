@@ -1,0 +1,65 @@
+{
+  "model_name": "Stacking (LR)",
+  "model_type": "StackingClassifier",
+  "scaler": "StandardScaler",
+  "ensemble_type": "Stacking",
+  "base_models": [
+    "svm_rbf",
+    "random_forest",
+    "gradient_boost",
+    "xgboost",
+    "lightgbm"
+  ],
+  "performance_metrics": {
+    "accuracy": 0.8218390804597702,
+    "precision": 0.8227848101265823,
+    "recall": 0.7926829268292683,
+    "f1_score": 0.8074534161490683,
+    "auc_roc": 0.8973356309650053
+  },
+  "training_details": {
+    "n_samples_train": 1388,
+    "n_samples_test": 348,
+    "n_features": 33,
+    "imputation_method": "KNNImputer (k=5)"
+  },
+  "feature_names": [
+    "Sex",
+    "Age",
+    "CA",
+    "CK",
+    "CREA",
+    "ALP",
+    "GGT",
+    "GLU",
+    "AST",
+    "ALT",
+    "LDH",
+    "PCR",
+    "KAL",
+    "NAT",
+    "UREA",
+    "WBC",
+    "RBC",
+    "HGB",
+    "HCT",
+    "MCV",
+    "MCH",
+    "MCHC",
+    "PLT1",
+    "NE",
+    "LY",
+    "MO",
+    "EO",
+    "BA",
+    "NET",
+    "LYT",
+    "MOT",
+    "EOT",
+    "BAT"
+  ],
+  "target_classes": [
+    "Negative",
+    "Positive"
+  ]
+}

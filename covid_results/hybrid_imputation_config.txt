@@ -1,0 +1,48 @@
+======================================================================
+HYBRID IMPUTATION CONFIGURATION
+======================================================================
+
+Average Mean Change: 0.72%
+Average Std Change: 6.99%
+Max Mean Change: 4.31% (UREA)
+
+KNN Features (6):
+  - BAT: 2.45% change, 20.9% missing
+  - MCV: 0.00% change, 3.6% missing
+  - MOT: 0.64% change, 20.9% missing
+  - NET: 1.91% change, 20.9% missing
+  - PLT1: 0.02% change, 3.6% missing
+  - UREA: 4.31% change, 38.9% missing
+
+MICE Features (26):
+  - ALP: 1.05% change, 27.3% missing
+  - ALT: 0.01% change, 5.5% missing
+  - AST: 0.17% change, 5.6% missing
+  - Age: 0.06% change, 3.1% missing
+  - BA: 0.38% change, 20.9% missing
+  - CA: 0.01% change, 5.4% missing
+  - CK: 3.38% change, 59.4% missing
+  - CREA: 0.04% change, 4.3% missing
+  - EO: 0.58% change, 20.9% missing
+  - EOT: 2.11% change, 20.9% missing
+  - GGT: 1.97% change, 25.1% missing
+  - GLU: 0.17% change, 5.6% missing
+  - HCT: 0.00% change, 3.6% missing
+  - HGB: 0.00% change, 3.6% missing
+  - KAL: 0.02% change, 4.6% missing
+  - LDH: 0.92% change, 17.5% missing
+  - LY: 0.01% change, 20.9% missing
+  - LYT: 1.67% change, 20.9% missing
+  - MCH: 0.00% change, 3.6% missing
+  - MCHC: 0.00% change, 3.6% missing
+  - MO: 0.00% change, 20.9% missing
+  - NAT: 0.00% change, 4.2% missing
+  - NE: 0.01% change, 20.9% missing
+  - PCR: 1.07% change, 5.6% missing
+  - RBC: 0.00% change, 3.6% missing
+  - WBC: 0.00% change, 3.6% missing
+
+======================================================================
+Improvement vs KNN only: 60.8%
+Improvement vs MICE only: 20.2%
+======================================================================

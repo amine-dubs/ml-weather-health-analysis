@@ -1,0 +1,60 @@
+{
+  "best_ensemble": "Stacking (LR)",
+  "all_ensembles": [
+    {
+      "model_name": "Stacking (LR)",
+      "type": "Stacking",
+      "metrics": {
+        "accuracy": 0.8218390804597702,
+        "precision": 0.8227848101265823,
+        "recall": 0.7926829268292683,
+        "f1_score": 0.8074534161490683,
+        "auc_roc": 0.8973356309650053
+      }
+    },
+    {
+      "model_name": "Voting (Soft)",
+      "type": "Voting",
+      "metrics": {
+        "accuracy": 0.8218390804597702,
+        "precision": 0.8269230769230769,
+        "recall": 0.7865853658536586,
+        "f1_score": 0.80625,
+        "auc_roc": 0.8963414634146342
+      }
+    },
+    {
+      "model_name": "Stacking (GB)",
+      "type": "Stacking",
+      "metrics": {
+        "accuracy": 0.8132183908045977,
+        "precision": 0.8113207547169812,
+        "recall": 0.7865853658536586,
+        "f1_score": 0.7987616099071208,
+        "auc_roc": 0.8878081919406151
+      }
+    },
+    {
+      "model_name": "Stacking (RF)",
+      "type": "Stacking",
+      "metrics": {
+        "accuracy": 0.8132183908045977,
+        "precision": 0.8113207547169812,
+        "recall": 0.7865853658536586,
+        "f1_score": 0.7987616099071208,
+        "auc_roc": 0.8800702545068929
+      }
+    },
+    {
+      "model_name": "Voting (Hard)",
+      "type": "Voting",
+      "metrics": {
+        "accuracy": 0.8247126436781609,
+        "precision": 0.8280254777070064,
+        "recall": 0.7926829268292683,
+        "f1_score": 0.8099688473520249,
+        "auc_roc": NaN
+      }
+    }
+  ]
+}

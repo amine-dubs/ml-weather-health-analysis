@@ -1,0 +1,28 @@
+{
+  "imputation_quality": {
+    "KNN_k5": 2.2045093988567204,
+    "MICE_BayesianRidge": 0.8997391302677549,
+    "XGBoost_Imputer_NoScale": 1.8633761739521881,
+    "XGBoost_Imputer_Scaled": 1.8952301531549027
+  },
+  "model_performance": {
+    "KNN (k=5)": {
+      "auc": 0.8890177624602333,
+      "accuracy": 0.8362068965517241
+    },
+    "MICE (BayesianRidge)": {
+      "auc": 0.8867146076352068,
+      "accuracy": 0.853448275862069
+    },
+    "XGBoost Imputer (No Scale)": {
+      "auc": 0.8807496023329798,
+      "accuracy": 0.8304597701149425
+    },
+    "XGBoost Imputer (Scaled)": {
+      "auc": 0.8851570784729587,
+      "accuracy": 0.8362068965517241
+    }
+  },
+  "best_imputation": "MICE (BayesianRidge)",
+  "best_model": "KNN (k=5)"
+}

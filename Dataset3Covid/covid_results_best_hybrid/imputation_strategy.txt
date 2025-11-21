@@ -1,0 +1,47 @@
+Best Hybrid Imputation Strategy
+================================================================================
+
+Average Mean Change: 0.63%
+
+Method Distribution:
+  MICE: 28 features (84.8%)
+  KNN: 3 features (9.1%)
+  XGB_Scaled: 1 features (3.0%)
+  XGB_NoScale: 1 features (3.0%)
+
+================================================================================
+
+Feature-Level Strategy:
+  ALP                  -> XGB_Scaled      (change: 0.82%)
+  ALT                  -> MICE            (change: 0.01%)
+  AST                  -> MICE            (change: 0.17%)
+  Age                  -> MICE            (change: 0.06%)
+  BA                   -> MICE            (change: 0.38%)
+  BAT                  -> MICE            (change: 4.16%)
+  CA                   -> MICE            (change: 0.01%)
+  CK                   -> MICE            (change: 3.38%)
+  CREA                 -> MICE            (change: 0.04%)
+  EO                   -> MICE            (change: 0.58%)
+  EOT                  -> MICE            (change: 2.11%)
+  GGT                  -> MICE            (change: 1.97%)
+  GLU                  -> MICE            (change: 0.17%)
+  HCT                  -> MICE            (change: 0.00%)
+  HGB                  -> MICE            (change: 0.00%)
+  KAL                  -> MICE            (change: 0.02%)
+  LDH                  -> MICE            (change: 0.92%)
+  LY                   -> MICE            (change: 0.01%)
+  LYT                  -> MICE            (change: 1.67%)
+  MCH                  -> MICE            (change: 0.00%)
+  MCHC                 -> MICE            (change: 0.00%)
+  MCV                  -> MICE            (change: 0.00%)
+  MO                   -> MICE            (change: 0.00%)
+  MOT                  -> MICE            (change: 1.69%)
+  NAT                  -> MICE            (change: 0.00%)
+  NE                   -> MICE            (change: 0.01%)
+  NET                  -> XGB_NoScale     (change: 0.56%)
+  PCR                  -> MICE            (change: 1.07%)
+  PLT1                 -> KNN             (change: 0.03%)
+  RBC                  -> MICE            (change: 0.00%)
+  Sex                  -> KNN             (change: 0.00%)
+  UREA                 -> KNN             (change: 1.01%)
+  WBC                  -> MICE            (change: 0.00%)

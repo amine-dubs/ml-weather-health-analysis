@@ -1,0 +1,24 @@
+BEST OUTLIER REMOVAL CONFIGURATION
+================================================================================
+
+method: IsolationForest (c=0.15)
+original_samples: 1736
+cleaned_samples: 1475
+samples_removed: 261
+removal_percentage: 15.034562211981568
+cv_auc: 0.8956290604842424
+cv_auc_std: 0.006144470100761498
+cv_accuracy: 0.8216949152542373
+cv_accuracy_std: 0.01105729249511868
+baseline_auc: 0.8847467861348391
+improvement_pp: 1.0882274349403254
+timestamp: 2025-11-20 10:17:53
+
+================================================================================
+
+USAGE:
+1. Load imputer: joblib.load('knn_imputer.joblib')
+2. Apply imputation to new data
+3. Apply outlier detection: IsolationForest (c=0.15)
+4. Load model: joblib.load('best_model_with_outlier_removal.joblib')
+5. Predict on cleaned data

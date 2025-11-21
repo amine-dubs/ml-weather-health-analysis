@@ -435,7 +435,7 @@ print(f"  MAE: {best_ensemble_info['mae']:.4f}")
 # Save the best ensemble model
 model_path = 'ensemble_results/models/best_ensemble_model.joblib'
 dump(best_ensemble_info['model'], model_path)
-print(f"\n✓ Model saved to: {model_path}")
+print(f"\n[OK] Model saved to: {model_path}")
 
 # Create metadata
 metadata = {
@@ -471,7 +471,7 @@ metadata = {
 metadata_path = 'ensemble_results/models/model_metadata.json'
 with open(metadata_path, 'w') as f:
     json.dump(metadata, f, indent=2)
-print(f"✓ Metadata saved to: {metadata_path}")
+print(f"[OK] Metadata saved to: {metadata_path}")
 
 print("\n" + "="*70)
 print("MODEL PERSISTENCE COMPLETE")

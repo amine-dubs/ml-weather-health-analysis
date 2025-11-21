@@ -3,13 +3,13 @@
   "model_type": "StackingRegressor",
   "description": "Sequential ensemble with 6 base models and Ridge meta-learner",
   "performance_metrics": {
-    "r2_score": 0.7766450251688722,
-    "mse": 20.584232586851034,
-    "mae": 3.4717944665992437,
-    "explained_variance": 0.7766456886369706
+    "r2_score": 0.7766451114399587,
+    "mse": 20.584224636170237,
+    "mae": 3.4717930339065988,
+    "explained_variance": 0.7766457749822238
   },
   "training_details": {
-    "training_time_seconds": 193.94299697875977,
+    "training_time_seconds": 232.6826138496399,
     "n_samples_train": 77162,
     "n_samples_test": 19291,
     "n_features": 8

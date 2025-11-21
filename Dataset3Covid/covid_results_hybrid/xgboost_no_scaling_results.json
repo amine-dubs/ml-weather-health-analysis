@@ -1,0 +1,24 @@
+{
+  "xgboost_scaled": {
+    "auc": 0.8854,
+    "scaling": "StandardScaler"
+  },
+  "xgboost_no_scale_standard": {
+    "auc": 0.8854387592788971,
+    "accuracy": 0.8247126436781609,
+    "precision": 0.8456375838926175,
+    "recall": 0.7682926829268293,
+    "f1_score": 0.805111821086262,
+    "scaling": "None",
+    "params": "Standard (n_estimators=100, lr=0.1, depth=5)"
+  },
+  "xgboost_no_scale_optimized": {
+    "auc": 0.8847097030752915,
+    "accuracy": 0.8247126436781609,
+    "precision": 0.832258064516129,
+    "recall": 0.7865853658536586,
+    "f1_score": 0.8087774294670846,
+    "scaling": "None",
+    "params": "Optimized (n_estimators=200, lr=0.05, depth=7, subsample=0.8)"
+  }
+}

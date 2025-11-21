@@ -6,7 +6,7 @@
     "precision": 0.9365079365079365,
     "recall": 0.9365079365079365,
     "f1_score": 0.9365079365079365,
-    "training_time_s": 6.810152530670166,
+    "training_time_s": 5.950026750564575,
     "feature_names": [
         "age",
         "sex",

@@ -1,0 +1,5 @@
+Method,AUC,Accuracy,Imputation_Quality_%,Outlier_Removal,Samples,Removed
+KNN k=5 (Original),0.8975,0.8391,2.2,No,1736,0
+KNN + IsolationForest,0.8956,0.8217,2.2,Yes (15%),1475,261
+Hybrid Baseline,0.8841574419845293,0.8225893537381165,0.6322723573123546,No,1736,0
+Hybrid + IsolationForest,0.8856435028674976,0.8183050847457627,0.6322723573123546,Yes (15.0%),1475,261

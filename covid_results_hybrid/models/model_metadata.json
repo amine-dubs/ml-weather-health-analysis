@@ -1,0 +1,67 @@
+{
+  "model_name": "Voting (Soft)",
+  "model_type": "VotingClassifier",
+  "scaler": "StandardScaler",
+  "performance_metrics": {
+    "accuracy": 0.8304597701149425,
+    "precision": 0.8431372549019608,
+    "recall": 0.7865853658536586,
+    "f1_score": 0.8138801261829653,
+    "auc_roc": 0.8947839342523861
+  },
+  "training_details": {
+    "n_samples_train": 1388,
+    "n_samples_test": 348,
+    "n_features": 33,
+    "imputation_method": "KNNImputer (k=5)"
+  },
+  "feature_names": [
+    "Sex",
+    "Age",
+    "CA",
+    "CK",
+    "CREA",
+    "ALP",
+    "GGT",
+    "GLU",
+    "AST",
+    "ALT",
+    "LDH",
+    "PCR",
+    "KAL",
+    "NAT",
+    "UREA",
+    "WBC",
+    "RBC",
+    "HGB",
+    "HCT",
+    "MCV",
+    "MCH",
+    "MCHC",
+    "PLT1",
+    "NE",
+    "LY",
+    "MO",
+    "EO",
+    "BA",
+    "NET",
+    "LYT",
+    "MOT",
+    "EOT",
+    "BAT"
+  ],
+  "target_classes": [
+    "Negative",
+    "Positive"
+  ],
+  "class_distribution": {
+    "train": {
+      "negative": 736,
+      "positive": 652
+    },
+    "test": {
+      "negative": 184,
+      "positive": 164
+    }
+  }
+}

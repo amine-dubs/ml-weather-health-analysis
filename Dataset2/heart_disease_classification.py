@@ -332,205 +332,205 @@ results_df = pd.DataFrame(all_results)
 
 # Save individual model results
 results_df.to_csv('classification_results/individual_models_comparison.csv', index=False)
-print("\n✓ Individual model results saved to 'classification_results/individual_models_comparison.csv'")
+print("\n[OK] Individual model results saved to 'classification_results/individual_models_comparison.csv'")
 
 print("\nTop 10 Models by ROC-AUC Score:")
 print(results_df.sort_values('roc_auc', ascending=False).head(10)[
     ['model', 'normalization', 'roc_auc', 'accuracy', 'f1_score']
 ].to_string())
 
-# --- 7. GRIDSEARCH ON TOP MODELS ---
-print("\n7. GRIDSEARCHCV ON TOP MODELS")
-print("=" * 80)
+# # --- 7. GRIDSEARCH ON TOP MODELS ---
+# print("\n7. GRIDSEARCHCV ON TOP MODELS")
+# print("=" * 80)
 
-# Select top unique models for GridSearch
-top_models = (
-    results_df.sort_values('roc_auc', ascending=False)
-    .drop_duplicates(subset=['model'], keep='first')
-    .head(5)
-)
-print(f"\nPerforming GridSearch on top {len(top_models)} unique models (by ROC-AUC):")
-for idx, row in top_models.iterrows():
-    print(f"  - {row['model']} (normalization={row['normalization']}, AUC={row['roc_auc']:.4f})")
+# # Select top unique models for GridSearch
+# top_models = (
+#     results_df.sort_values('roc_auc', ascending=False)
+#     .drop_duplicates(subset=['model'], keep='first')
+#     .head(5)
+# )
+# print(f"\nPerforming GridSearch on top {len(top_models)} unique models (by ROC-AUC):")
+# for idx, row in top_models.iterrows():
+#     print(f"  - {row['model']} (normalization={row['normalization']}, AUC={row['roc_auc']:.4f})")
 
-gridsearch_results = []
+# gridsearch_results = []
 
-# GridSearch for XGBoost (More comprehensive)
-print("\n--- GridSearch: XGBoost (Comprehensive) ---")
-xgb_params = {
-    'n_estimators': [50, 100, 150, 200],
-    'max_depth': [3, 5, 7, 9],
-    'learning_rate': [0.01, 0.05, 0.1, 0.2],
-    'subsample': [0.7, 0.8, 0.9, 1.0],
-    'colsample_bytree': [0.7, 0.8, 0.9, 1.0],
-    'gamma': [0, 0.1, 0.2]
-}
+# # GridSearch for XGBoost (More comprehensive)
+# print("\n--- GridSearch: XGBoost (Comprehensive) ---")
+# xgb_params = {
+#     'n_estimators': [50, 100, 150, 200],
+#     'max_depth': [3, 5, 7, 9],
+#     'learning_rate': [0.01, 0.05, 0.1, 0.2],
+#     'subsample': [0.7, 0.8, 0.9, 1.0],
+#     'colsample_bytree': [0.7, 0.8, 0.9, 1.0],
+#     'gamma': [0, 0.1, 0.2]
+# }
 
-xgb_grid = GridSearchCV(
-    xgb.XGBClassifier(random_state=42, n_jobs=1, eval_metric='logloss'),
-    xgb_params,
-    cv=5,
-    scoring='roc_auc',
-    n_jobs=1,
-    verbose=1
-)
+# xgb_grid = GridSearchCV(
+#     xgb.XGBClassifier(random_state=42, n_jobs=1, eval_metric='logloss'),
+#     xgb_params,
+#     cv=5,
+#     scoring='roc_auc',
+#     n_jobs=1,
+#     verbose=1
+# )
 
-print("Fitting XGBoost GridSearch...")
-start_time = time.time()
-xgb_grid.fit(X_train_standard, y_train)
-xgb_grid_time = time.time() - start_time
+# print("Fitting XGBoost GridSearch...")
+# start_time = time.time()
+# xgb_grid.fit(X_train_standard, y_train)
+# xgb_grid_time = time.time() - start_time
 
-print(f"Best XGBoost params: {xgb_grid.best_params_}")
-print(f"Best CV ROC-AUC score: {xgb_grid.best_score_:.4f}")
+# print(f"Best XGBoost params: {xgb_grid.best_params_}")
+# print(f"Best CV ROC-AUC score: {xgb_grid.best_score_:.4f}")
 
-y_pred_xgb_grid = xgb_grid.predict(X_test_standard)
-y_pred_proba_xgb_grid = xgb_grid.predict_proba(X_test_standard)[:, 1]
+# y_pred_xgb_grid = xgb_grid.predict(X_test_standard)
+# y_pred_proba_xgb_grid = xgb_grid.predict_proba(X_test_standard)[:, 1]
 
-gridsearch_results.append({
-    'model': 'XGBoost_GridSearch',
-    'best_params': str(xgb_grid.best_params_),
-    'accuracy': accuracy_score(y_test, y_pred_xgb_grid),
-    'precision': precision_score(y_test, y_pred_xgb_grid),
-    'recall': recall_score(y_test, y_pred_xgb_grid),
-    'f1_score': f1_score(y_test, y_pred_xgb_grid),
-    'roc_auc': roc_auc_score(y_test, y_pred_proba_xgb_grid),
-    'training_time_s': xgb_grid_time
-})
+# gridsearch_results.append({
+#     'model': 'XGBoost_GridSearch',
+#     'best_params': str(xgb_grid.best_params_),
+#     'accuracy': accuracy_score(y_test, y_pred_xgb_grid),
+#     'precision': precision_score(y_test, y_pred_xgb_grid),
+#     'recall': recall_score(y_test, y_pred_xgb_grid),
+#     'f1_score': f1_score(y_test, y_pred_xgb_grid),
+#     'roc_auc': roc_auc_score(y_test, y_pred_proba_xgb_grid),
+#     'training_time_s': xgb_grid_time
+# })
 
-print(f"Test ROC-AUC: {gridsearch_results[-1]['roc_auc']:.4f}, Accuracy: {gridsearch_results[-1]['accuracy']:.4f}")
+# print(f"Test ROC-AUC: {gridsearch_results[-1]['roc_auc']:.4f}, Accuracy: {gridsearch_results[-1]['accuracy']:.4f}")
 
-# GridSearch for KNN (NEW)
-print("\n--- GridSearch: KNN (NEW) ---")
-knn_params = {
-    'n_neighbors': [3, 5, 7, 9, 11, 15, 20],
-    'weights': ['uniform', 'distance'],
-    'metric': ['euclidean', 'manhattan', 'minkowski'],
-    'p': [1, 2]
-}
+# # GridSearch for KNN (NEW)
+# print("\n--- GridSearch: KNN (NEW) ---")
+# knn_params = {
+#     'n_neighbors': [3, 5, 7, 9, 11, 15, 20],
+#     'weights': ['uniform', 'distance'],
+#     'metric': ['euclidean', 'manhattan', 'minkowski'],
+#     'p': [1, 2]
+# }
 
-knn_grid = GridSearchCV(
-    KNeighborsClassifier(),
-    knn_params,
-    cv=5,
-    scoring='roc_auc',
-    n_jobs=1,
-    verbose=1
-)
+# knn_grid = GridSearchCV(
+#     KNeighborsClassifier(),
+#     knn_params,
+#     cv=5,
+#     scoring='roc_auc',
+#     n_jobs=1,
+#     verbose=1
+# )
 
-print("Fitting KNN GridSearch...")
-start_time = time.time()
-knn_grid.fit(X_train_standard, y_train)
-knn_grid_time = time.time() - start_time
+# print("Fitting KNN GridSearch...")
+# start_time = time.time()
+# knn_grid.fit(X_train_standard, y_train)
+# knn_grid_time = time.time() - start_time
 
-print(f"Best KNN params: {knn_grid.best_params_}")
-print(f"Best CV ROC-AUC score: {knn_grid.best_score_:.4f}")
+# print(f"Best KNN params: {knn_grid.best_params_}")
+# print(f"Best CV ROC-AUC score: {knn_grid.best_score_:.4f}")
 
-y_pred_knn_grid = knn_grid.predict(X_test_standard)
-y_pred_proba_knn_grid = knn_grid.predict_proba(X_test_standard)[:, 1]
+# y_pred_knn_grid = knn_grid.predict(X_test_standard)
+# y_pred_proba_knn_grid = knn_grid.predict_proba(X_test_standard)[:, 1]
 
-gridsearch_results.append({
-    'model': 'KNN_GridSearch',
-    'best_params': str(knn_grid.best_params_),
-    'accuracy': accuracy_score(y_test, y_pred_knn_grid),
-    'precision': precision_score(y_test, y_pred_knn_grid),
-    'recall': recall_score(y_test, y_pred_knn_grid),
-    'f1_score': f1_score(y_test, y_pred_knn_grid),
-    'roc_auc': roc_auc_score(y_test, y_pred_proba_knn_grid),
-    'training_time_s': knn_grid_time
-})
+# gridsearch_results.append({
+#     'model': 'KNN_GridSearch',
+#     'best_params': str(knn_grid.best_params_),
+#     'accuracy': accuracy_score(y_test, y_pred_knn_grid),
+#     'precision': precision_score(y_test, y_pred_knn_grid),
+#     'recall': recall_score(y_test, y_pred_knn_grid),
+#     'f1_score': f1_score(y_test, y_pred_knn_grid),
+#     'roc_auc': roc_auc_score(y_test, y_pred_proba_knn_grid),
+#     'training_time_s': knn_grid_time
+# })
 
-print(f"Test ROC-AUC: {gridsearch_results[-1]['roc_auc']:.4f}, Accuracy: {gridsearch_results[-1]['accuracy']:.4f}")
+# print(f"Test ROC-AUC: {gridsearch_results[-1]['roc_auc']:.4f}, Accuracy: {gridsearch_results[-1]['accuracy']:.4f}")
 
-# GridSearch for RandomForest
-print("\n--- GridSearch: RandomForest ---")
-rf_params = {
-    'n_estimators': [50, 100, 150, 200],
-    'max_depth': [10, 20, 30, None],
-    'min_samples_split': [2, 5, 10],
-    'min_samples_leaf': [1, 2, 4]
-}
+# # GridSearch for RandomForest
+# print("\n--- GridSearch: RandomForest ---")
+# rf_params = {
+#     'n_estimators': [50, 100, 150, 200],
+#     'max_depth': [10, 20, 30, None],
+#     'min_samples_split': [2, 5, 10],
+#     'min_samples_leaf': [1, 2, 4]
+# }
 
-rf_grid = GridSearchCV(
-    RandomForestClassifier(random_state=42, n_jobs=1),
-    rf_params,
-    cv=5,
-    scoring='roc_auc',
-    n_jobs=1,
-    verbose=1
-)
+# rf_grid = GridSearchCV(
+#     RandomForestClassifier(random_state=42, n_jobs=1),
+#     rf_params,
+#     cv=5,
+#     scoring='roc_auc',
+#     n_jobs=1,
+#     verbose=1
+# )
 
-print("Fitting RandomForest GridSearch...")
-start_time = time.time()
-rf_grid.fit(X_train_standard, y_train)
-rf_grid_time = time.time() - start_time
+# print("Fitting RandomForest GridSearch...")
+# start_time = time.time()
+# rf_grid.fit(X_train_standard, y_train)
+# rf_grid_time = time.time() - start_time
 
-print(f"Best RandomForest params: {rf_grid.best_params_}")
-print(f"Best CV ROC-AUC score: {rf_grid.best_score_:.4f}")
+# print(f"Best RandomForest params: {rf_grid.best_params_}")
+# print(f"Best CV ROC-AUC score: {rf_grid.best_score_:.4f}")
 
-y_pred_rf_grid = rf_grid.predict(X_test_standard)
-y_pred_proba_rf_grid = rf_grid.predict_proba(X_test_standard)[:, 1]
+# y_pred_rf_grid = rf_grid.predict(X_test_standard)
+# y_pred_proba_rf_grid = rf_grid.predict_proba(X_test_standard)[:, 1]
 
-gridsearch_results.append({
-    'model': 'RandomForest_GridSearch',
-    'best_params': str(rf_grid.best_params_),
-    'accuracy': accuracy_score(y_test, y_pred_rf_grid),
-    'precision': precision_score(y_test, y_pred_rf_grid),
-    'recall': recall_score(y_test, y_pred_rf_grid),
-    'f1_score': f1_score(y_test, y_pred_rf_grid),
-    'roc_auc': roc_auc_score(y_test, y_pred_proba_rf_grid),
-    'training_time_s': rf_grid_time
-})
+# gridsearch_results.append({
+#     'model': 'RandomForest_GridSearch',
+#     'best_params': str(rf_grid.best_params_),
+#     'accuracy': accuracy_score(y_test, y_pred_rf_grid),
+#     'precision': precision_score(y_test, y_pred_rf_grid),
+#     'recall': recall_score(y_test, y_pred_rf_grid),
+#     'f1_score': f1_score(y_test, y_pred_rf_grid),
+#     'roc_auc': roc_auc_score(y_test, y_pred_proba_rf_grid),
+#     'training_time_s': rf_grid_time
+# })
 
-print(f"Test ROC-AUC: {gridsearch_results[-1]['roc_auc']:.4f}, Accuracy: {gridsearch_results[-1]['accuracy']:.4f}")
+# print(f"Test ROC-AUC: {gridsearch_results[-1]['roc_auc']:.4f}, Accuracy: {gridsearch_results[-1]['accuracy']:.4f}")
 
-# GridSearch for GradientBoosting
-print("\n--- GridSearch: GradientBoosting ---")
-gb_params = {
-    'n_estimators': [50, 100, 150, 200],
-    'max_depth': [3, 5, 7],
-    'learning_rate': [0.01, 0.05, 0.1, 0.2],
-    'subsample': [0.7, 0.8, 0.9, 1.0]
-}
+# # GridSearch for GradientBoosting
+# print("\n--- GridSearch: GradientBoosting ---")
+# gb_params = {
+#     'n_estimators': [50, 100, 150, 200],
+#     'max_depth': [3, 5, 7],
+#     'learning_rate': [0.01, 0.05, 0.1, 0.2],
+#     'subsample': [0.7, 0.8, 0.9, 1.0]
+# }
 
-gb_grid = GridSearchCV(
-    GradientBoostingClassifier(random_state=42),
-    gb_params,
-    cv=5,
-    scoring='roc_auc',
-    n_jobs=1,
-    verbose=1
-)
+# gb_grid = GridSearchCV(
+#     GradientBoostingClassifier(random_state=42),
+#     gb_params,
+#     cv=5,
+#     scoring='roc_auc',
+#     n_jobs=1,
+#     verbose=1
+# )
 
-print("Fitting GradientBoosting GridSearch...")
-start_time = time.time()
-gb_grid.fit(X_train_standard, y_train)
-gb_grid_time = time.time() - start_time
+# print("Fitting GradientBoosting GridSearch...")
+# start_time = time.time()
+# gb_grid.fit(X_train_standard, y_train)
+# gb_grid_time = time.time() - start_time
 
-print(f"Best GradientBoosting params: {gb_grid.best_params_}")
-print(f"Best CV ROC-AUC score: {gb_grid.best_score_:.4f}")
+# print(f"Best GradientBoosting params: {gb_grid.best_params_}")
+# print(f"Best CV ROC-AUC score: {gb_grid.best_score_:.4f}")
 
-y_pred_gb_grid = gb_grid.predict(X_test_standard)
-y_pred_proba_gb_grid = gb_grid.predict_proba(X_test_standard)[:, 1]
+# y_pred_gb_grid = gb_grid.predict(X_test_standard)
+# y_pred_proba_gb_grid = gb_grid.predict_proba(X_test_standard)[:, 1]
 
-gridsearch_results.append({
-    'model': 'GradientBoosting_GridSearch',
-    'best_params': str(gb_grid.best_params_),
-    'accuracy': accuracy_score(y_test, y_pred_gb_grid),
-    'precision': precision_score(y_test, y_pred_gb_grid),
-    'recall': recall_score(y_test, y_pred_gb_grid),
-    'f1_score': f1_score(y_test, y_pred_gb_grid),
-    'roc_auc': roc_auc_score(y_test, y_pred_proba_gb_grid),
-    'training_time_s': gb_grid_time
-})
+# gridsearch_results.append({
+#     'model': 'GradientBoosting_GridSearch',
+#     'best_params': str(gb_grid.best_params_),
+#     'accuracy': accuracy_score(y_test, y_pred_gb_grid),
+#     'precision': precision_score(y_test, y_pred_gb_grid),
+#     'recall': recall_score(y_test, y_pred_gb_grid),
+#     'f1_score': f1_score(y_test, y_pred_gb_grid),
+#     'roc_auc': roc_auc_score(y_test, y_pred_proba_gb_grid),
+#     'training_time_s': gb_grid_time
+# })
 
-print(f"Test ROC-AUC: {gridsearch_results[-1]['roc_auc']:.4f}, Accuracy: {gridsearch_results[-1]['accuracy']:.4f}")
+# print(f"Test ROC-AUC: {gridsearch_results[-1]['roc_auc']:.4f}, Accuracy: {gridsearch_results[-1]['accuracy']:.4f}")
 
-gridsearch_df = pd.DataFrame(gridsearch_results)
-gridsearch_df.to_csv('classification_results/gridsearch/gridsearch_results.csv', index=False)
-print("\n✓ GridSearch results saved to 'classification_results/gridsearch/gridsearch_results.csv'")
+# gridsearch_df = pd.DataFrame(gridsearch_results)
+# gridsearch_df.to_csv('classification_results/gridsearch/gridsearch_results.csv', index=False)
+# print("\n✓ GridSearch results saved to 'classification_results/gridsearch/gridsearch_results.csv'")
 
-print("\nGridSearch Results (sorted by ROC-AUC):")
-print(gridsearch_df.sort_values('roc_auc', ascending=False)[['model', 'roc_auc', 'accuracy', 'f1_score']].to_string())
+# print("\nGridSearch Results (sorted by ROC-AUC):")
+# print(gridsearch_df.sort_values('roc_auc', ascending=False)[['model', 'roc_auc', 'accuracy', 'f1_score']].to_string())
 
 # --- 8. ENSEMBLE METHODS WITHOUT NORMALIZATION ---
 print("\n8. ENSEMBLE METHODS WITHOUT NORMALIZATION")
@@ -677,7 +677,7 @@ print(f"Stacking (Standard) - Acc={ensemble_results[-1]['accuracy']:.4f}, F1={en
 # Save ensemble results
 ensemble_df = pd.DataFrame(ensemble_results)
 ensemble_df.to_csv('classification_results/ensemble_methods_comparison.csv', index=False)
-print("\n✓ Ensemble results saved to 'classification_results/ensemble_methods_comparison.csv'")
+print("\n[OK] Ensemble results saved to 'classification_results/ensemble_methods_comparison.csv'")
 
 print("\nEnsemble Methods Results:")
 print(ensemble_df[['model', 'normalization', 'accuracy', 'f1_score', 'roc_auc']].to_string())
@@ -687,12 +687,14 @@ print("\n10. FINAL COMPARISON AND SAVE BEST MODEL")
 print("=" * 80)
 
 # Combine all results
-final_results = pd.concat([results_df, gridsearch_df.drop('best_params', axis=1), ensemble_df], ignore_index=True)
+# final_results = pd.concat([results_df, gridsearch_df.drop('best_params', axis=1), ensemble_df], ignore_index=True)
+# final_results = final_results.sort_values('roc_auc', ascending=False)
+final_results = pd.concat([results_df, ensemble_df], ignore_index=True)
 final_results = final_results.sort_values('roc_auc', ascending=False)
 
 # Save final results
 final_results.to_csv('classification_results/final_comparison_all_methods.csv', index=False)
-print("\n✓ Final comparison saved to 'classification_results/final_comparison_all_methods.csv'")
+print("\n[OK] Final comparison saved to 'classification_results/final_comparison_all_methods.csv'")
 
 print("\nTop 10 Best Models by ROC-AUC Score:")
 print(final_results.head(10)[['model', 'normalization', 'roc_auc', 'accuracy', 'f1_score']].to_string())
@@ -733,23 +735,23 @@ else:
     X_test_final = X_test_standard
 
 # Get or retrain the best model
-if 'XGBoost_GridSearch' in best_model_name:
-    best_model_trained = xgb_grid.best_estimator_
-    y_pred_best_model = y_pred_xgb_grid
-    y_pred_proba_best_model = y_pred_proba_xgb_grid
-elif 'KNN_GridSearch' in best_model_name:
-    best_model_trained = knn_grid.best_estimator_
-    y_pred_best_model = y_pred_knn_grid
-    y_pred_proba_best_model = y_pred_proba_knn_grid
-elif 'RandomForest_GridSearch' in best_model_name:
-    best_model_trained = rf_grid.best_estimator_
-    y_pred_best_model = y_pred_rf_grid
-    y_pred_proba_best_model = y_pred_proba_rf_grid
-elif 'GradientBoosting_GridSearch' in best_model_name:
-    best_model_trained = gb_grid.best_estimator_
-    y_pred_best_model = y_pred_gb_grid
-    y_pred_proba_best_model = y_pred_proba_gb_grid
-elif 'VotingClassifier' in best_model_name:
+# if 'XGBoost_GridSearch' in best_model_name:
+#     best_model_trained = xgb_grid.best_estimator_
+#     y_pred_best_model = y_pred_xgb_grid
+#     y_pred_proba_best_model = y_pred_proba_xgb_grid
+# elif 'KNN_GridSearch' in best_model_name:
+#     best_model_trained = knn_grid.best_estimator_
+#     y_pred_best_model = y_pred_knn_grid
+#     y_pred_proba_best_model = y_pred_proba_knn_grid
+# elif 'RandomForest_GridSearch' in best_model_name:
+#     best_model_trained = rf_grid.best_estimator_
+#     y_pred_best_model = y_pred_rf_grid
+#     y_pred_proba_best_model = y_pred_proba_rf_grid
+# elif 'GradientBoosting_GridSearch' in best_model_name:
+#     best_model_trained = gb_grid.best_estimator_
+#     y_pred_best_model = y_pred_gb_grid
+#     y_pred_proba_best_model = y_pred_proba_gb_grid
+if 'VotingClassifier' in best_model_name:
     if best_normalization == 'None':
         best_model_trained = voting_clf_no_norm
         y_pred_best_model = y_pred_voting_no_norm
@@ -804,13 +806,13 @@ else:
 
 # Save the model and scaler
 dump(best_model_trained, 'classification_results/models/best_model.joblib')
-print(f"✓ Best model saved to 'classification_results/models/best_model.joblib'")
+print(f"[OK] Best model saved to 'classification_results/models/best_model.joblib'")
 
 if scaler_to_save is not None:
     dump(scaler_to_save, 'classification_results/models/scaler.joblib')
-    print(f"✓ Scaler saved to 'classification_results/models/scaler.joblib'")
+    print(f"[OK] Scaler saved to 'classification_results/models/scaler.joblib'")
 else:
-    print("✓ No scaler needed (model works on raw features)")
+    print("[OK] No scaler needed (model works on raw features)")
 
 # Save model metadata
 model_metadata = {
@@ -829,7 +831,7 @@ model_metadata = {
 import json
 with open('classification_results/models/model_metadata.json', 'w') as f:
     json.dump(model_metadata, f, indent=4)
-print("✓ Model metadata saved to 'classification_results/models/model_metadata.json'")
+print("[OK] Model metadata saved to 'classification_results/models/model_metadata.json'")
 
 print("\n" + "=" * 80)
 print("BEST MODEL IS READY FOR PREDICTIONS IN THE DASHBOARD!")
@@ -944,10 +946,10 @@ plt.tight_layout()
 plt.savefig('classification_results/plots/02_normalization_impact.png', dpi=300, bbox_inches='tight')
 plt.close()
 
-# PLOT 3: Ensemble and GridSearch Analysis
-print("  - Creating ensemble and GridSearch analysis plot...")
+# PLOT 3: Ensemble Analysis
+print("  - Creating ensemble analysis plot...")
 fig3, axes3 = plt.subplots(2, 2, figsize=(20, 14))
-fig3.suptitle('Ensemble Methods and GridSearch Analysis', fontsize=18, fontweight='bold')
+fig3.suptitle('Ensemble Methods Analysis', fontsize=18, fontweight='bold')
 
 # Ensemble vs Individual Best
 ax7 = axes3[0, 0]
@@ -974,33 +976,33 @@ for bar, val in zip(bars_ens, comparison_data['Accuracy']):
     ax7.text(bar.get_x() + bar.get_width()/2, val + 0.005, 
             f'{val:.4f}', ha='center', va='bottom', fontsize=11, fontweight='bold')
 
-# GridSearch Improvements
-ax8 = axes3[0, 1]
-gridsearch_comparison = []
-for _, row in gridsearch_df.iterrows():
-    base_name = row['model'].replace('_GridSearch', '')
-    base_acc = results_df[results_df['model']==base_name]['accuracy'].max()
-    grid_acc = row['accuracy']
-    improvement = ((grid_acc - base_acc) / base_acc) * 100
-    gridsearch_comparison.append({
-        'Model': base_name,
-        'Improvement': improvement,
-        'Base': base_acc,
-        'GridSearch': grid_acc
-    })
-gs_comp_df = pd.DataFrame(gridsearch_comparison)
-colors_gs = ['green' if v > 0 else 'red' for v in gs_comp_df['Improvement']]
-bars_gs = ax8.bar(gs_comp_df['Model'], gs_comp_df['Improvement'], color=colors_gs, alpha=0.7, edgecolor='black', linewidth=2)
-ax8.set_ylabel('Improvement (%)', fontsize=13, fontweight='bold')
-ax8.set_xlabel('Model', fontsize=13, fontweight='bold')
-ax8.set_title('GridSearch Improvement over Base Models', fontsize=14, fontweight='bold')
-ax8.axhline(y=0, color='black', linestyle='-', linewidth=2)
-ax8.grid(axis='y', alpha=0.3, linestyle='--')
-ax8.tick_params(axis='both', labelsize=11)
-for bar, val in zip(bars_gs, gs_comp_df['Improvement']):
-    ax8.text(bar.get_x() + bar.get_width()/2, val + 0.1 if val > 0 else val - 0.3, 
-            f'{val:.2f}%', ha='center', va='bottom' if val > 0 else 'top', 
-            fontsize=11, fontweight='bold')
+# # GridSearch Improvements
+# ax8 = axes3[0, 1]
+# gridsearch_comparison = []
+# for _, row in gridsearch_df.iterrows():
+#     base_name = row['model'].replace('_GridSearch', '')
+#     base_acc = results_df[results_df['model']==base_name]['accuracy'].max()
+#     grid_acc = row['accuracy']
+#     improvement = ((grid_acc - base_acc) / base_acc) * 100
+#     gridsearch_comparison.append({
+#         'Model': base_name,
+#         'Improvement': improvement,
+#         'Base': base_acc,
+#         'GridSearch': grid_acc
+#     })
+# gs_comp_df = pd.DataFrame(gridsearch_comparison)
+# colors_gs = ['green' if v > 0 else 'red' for v in gs_comp_df['Improvement']]
+# bars_gs = ax8.bar(gs_comp_df['Model'], gs_comp_df['Improvement'], color=colors_gs, alpha=0.7, edgecolor='black', linewidth=2)
+# ax8.set_ylabel('Improvement (%)', fontsize=13, fontweight='bold')
+# ax8.set_xlabel('Model', fontsize=13, fontweight='bold')
+# ax8.set_title('GridSearch Improvement over Base Models', fontsize=14, fontweight='bold')
+# ax8.axhline(y=0, color='black', linestyle='-', linewidth=2)
+# ax8.grid(axis='y', alpha=0.3, linestyle='--')
+# ax8.tick_params(axis='both', labelsize=11)
+# for bar, val in zip(bars_gs, gs_comp_df['Improvement']):
+#     ax8.text(bar.get_x() + bar.get_width()/2, val + 0.1 if val > 0 else val - 0.3, 
+#             f'{val:.2f}%', ha='center', va='bottom' if val > 0 else 'top', 
+#             fontsize=11, fontweight='bold')
 
 # Training Time Comparison
 ax9 = axes3[1, 0]
@@ -1038,9 +1040,9 @@ for autotext in autotexts:
     autotext.set_fontweight('bold')
 ax10.set_title('Model Type Distribution', fontsize=14, fontweight='bold')
 
-plt.tight_layout()
-plt.savefig('classification_results/plots/03_ensemble_gridsearch_analysis.png', dpi=300, bbox_inches='tight')
-plt.close()
+# plt.tight_layout()
+# plt.savefig('classification_results/plots/03_ensemble_gridsearch_analysis.png', dpi=300, bbox_inches='tight')
+# plt.close()
 
 # PLOT 4: Best Model Details
 print("  - Creating best model details plot...")
@@ -1053,14 +1055,14 @@ best_model = final_results.iloc[0]
 print(f"    Generating confusion matrix for: {best_model['model']}")
 
 # Get predictions for best model
-if 'GridSearch' in best_model['model']:
-    if 'XGBoost' in best_model['model']:
-        y_pred_best = y_pred_xgb_grid
-    elif 'RandomForest' in best_model['model']:
-        y_pred_best = y_pred_rf_grid
-    elif 'GradientBoosting' in best_model['model']:
-        y_pred_best = y_pred_gb_grid
-elif best_model['model'] == 'VotingClassifier':
+# if 'GridSearch' in best_model['model']:
+#     if 'XGBoost' in best_model['model']:
+#         y_pred_best = y_pred_xgb_grid
+#     elif 'RandomForest' in best_model['model']:
+#         y_pred_best = y_pred_rf_grid
+#     elif 'GradientBoosting' in best_model['model']:
+#         y_pred_best = y_pred_gb_grid
+if best_model['model'] == 'VotingClassifier':
     if best_model['normalization'] == 'None':
         y_pred_best = y_pred_voting_no_norm
     else:
@@ -1123,7 +1125,7 @@ Best Overall Model (by ROC-AUC):
 ───────────────────────────────────
 Total Models Evaluated: {len(final_results)}
   • Individual Models:  {len(results_df)}
-  • GridSearch Tuned:   {len(gridsearch_df)}
+  • GridSearch Tuned:   
   • Ensemble Methods:   {len(ensemble_df)}
 
 ───────────────────────────────────
@@ -1153,7 +1155,7 @@ plt.tight_layout()
 plt.savefig('classification_results/plots/04_best_model_details.png', dpi=300, bbox_inches='tight')
 plt.close()
 
-print("✓ All visualizations generated successfully!")
+print("[OK] All visualizations generated successfully!")
 
 print("\n=== ANALYSIS COMPLETE ===")
 print("Generated files:")
