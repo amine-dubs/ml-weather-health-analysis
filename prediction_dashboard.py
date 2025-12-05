@@ -13,6 +13,7 @@ from joblib import load
 import sys
 import pickle
 import warnings
+import matplotlib.pyplot as plt
 
 # Suppress all warnings for cleaner dashboard output
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
@@ -174,7 +175,8 @@ model_choice = st.sidebar.radio(
         "🦠 COVID-19 Diagnosis (Stacking Ensemble)",
         "🌡️ Temperature Prediction (Ensemble)",
         "🎯 Multi-Output (Pressure & Humidity)",
-        "☁️ Weather Classification (4-class)"
+        "☁️ Weather Classification (4-class)",
+        "🌬️ Wind Turbine Power Forecasting (Time Series)"
     ]
 )
 
@@ -225,6 +227,15 @@ else:  # Weather Classification
     **Algorithm:** Random Forest  
     **ROC-AUC:** 0.8493  
     **Features:** 31 engineered
+    """)
+
+if "Wind Turbine" in model_choice:
+    st.sidebar.success("✅ **Ready**")
+    st.sidebar.info("""
+    **Type:** Time Series Forecasting  
+    **Algorithm:** Ridge Regression  
+    **R² Score:** 0.9714  
+    **Target:** LV ActivePower (kW)
     """)
 
 st.sidebar.markdown("---")
@@ -1038,6 +1049,794 @@ elif "Multi-Output" in model_choice:
 
 # ============================================================================
 # PREDICTION SECTION 5: WEATHER CLASSIFICATION
+# ============================================================================
+
+elif "Weather Classification" in model_choice:
+    
+    st.markdown("### Enter Weather Observations")
+    st.caption("Classify into 4 weather types: Clear, Mostly Cloudy, Overcast, Partly Cloudy")
+    
+    try:
+        model_path = "weather_classification_models/best_model.joblib"
+        metadata_path = "weather_classification_models/model_metadata.json"
+        
+        if os.path.exists(model_path) and os.path.exists(metadata_path):
+            model = joblib.load(model_path)
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+            
+            st.success(f"✅ Model Loaded: {metadata.get('model_name')}")
+            st.info(f"**Model requires 31 engineered features** - Using simplified heuristic approach")
+            
+            st.markdown("---")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown("**🌡️ Temperature**")
+                temp_w = st.number_input("Temperature (°C)", -40.0, 50.0, 20.0, key="tw")
+                humidity_w = st.slider("Humidity (%)", 0.0, 100.0, 50.0, key="hw")
+                apparent_w = st.number_input("Apparent Temp (°C)", -40.0, 50.0, 20.0, key="aw")
+            
+            with col2:
+                st.markdown("**💨 Wind & Pressure**")
+                pressure_w = st.number_input("Pressure (mbar)", 950.0, 1050.0, 1013.0, key="pw")
+                wind_w = st.number_input("Wind Speed (km/h)", 0.0, 100.0, 10.0, key="ww")
+                wind_bearing_w = st.number_input("Wind Bearing (°)", 0.0, 360.0, 180.0, key="wb")
+            
+            with col3:
+                st.markdown("**☁️ Visibility & Clouds**")
+                visibility_w = st.number_input("Visibility (km)", 0.0, 20.0, 10.0, key="vw")
+                cloud_w = st.slider("Cloud Cover (0-8)", 0.0, 8.0, 4.0, key="cw")
+            
+            st.markdown("---")
+            
+            if st.button("☁️ Classify Weather", type="primary", use_container_width=True):
+                
+                st.warning("""
+                **Note:** Full model prediction requires 31 engineered features.  
+                Using simplified heuristic based on cloud cover and humidity.
+                """)
+                
+                # Simplified heuristic
+                classes = metadata['target_classes']
+                
+                if cloud_w > 6:
+                    probs = [0.05, 0.10, 0.25, 0.60]  # Mostly Overcast
+                elif cloud_w > 4:
+                    probs = [0.10, 0.20, 0.60, 0.10]  # Mostly Cloudy
+                elif cloud_w > 2:
+                    probs = [0.20, 0.60, 0.15, 0.05]  # Mostly Partly Cloudy
+                else:
+                    probs = [0.70, 0.20, 0.08, 0.02]  # Mostly Clear
+                
+                # Adjust for humidity
+                if humidity_w > 80:
+                    probs = [p * 0.7 for p in probs[:-1]] + [probs[-1] * 1.3]
+                elif humidity_w < 30:
+                    probs = [probs[0] * 1.3] + [p * 0.7 for p in probs[1:]]
+                
+                # Normalize
+                total = sum(probs)
+                probs = [p / total for p in probs]
+                
+                st.markdown("### 🎲 Weather Classification Results")
+                
+                for cls, prob in zip(classes, probs):
+                    st.progress(prob, text=f"**{cls}**: {prob*100:.1f}%")
+                
+                predicted_class = classes[probs.index(max(probs))]
+                
+                st.markdown('<div class="prediction-result">☁️ Most Likely: {}</div>'.format(predicted_class), 
+                          unsafe_allow_html=True)
+                
+                st.metric("Confidence", f"{max(probs)*100:.1f}%")
+                
+                st.caption("⚠️ Simplified prediction. Full model requires feature engineering pipeline.")
+            
+            # Model Performance Section (Always Visible)
+            st.markdown("---")
+            st.markdown("### 📊 Model Performance Metrics")
+            st.caption("Random Forest Classifier - 4-class weather classification")
+            
+            perf_col1, perf_col2, perf_col3 = st.columns(3)
+            
+            with perf_col1:
+                auc = metadata.get('performance_metrics', {}).get('auc_score', 0.8493)
+                st.metric("ROC-AUC", f"{auc:.4f}", help="Multi-class AUC score (One-vs-Rest)")
+                st.progress(auc)
+                
+            with perf_col2:
+                acc = metadata.get('performance_metrics', {}).get('accuracy', 0.6474)
+                st.metric("Accuracy", f"{acc:.4f}", help="Overall classification accuracy")
+                st.progress(acc)
+                
+            with perf_col3:
+                n_classes = metadata.get('training_details', {}).get('n_classes', 4)
+                st.metric("Classes", n_classes, help="Number of weather categories")
+                st.info("Multi-class problem")
+            
+            with st.expander("ℹ️ Model Details & Feature Engineering"):
+                st.markdown(f"""
+                **Model Architecture:**
+                - **Type:** {metadata.get('model_type', 'RandomForestClassifier')}
+                - **Normalization:** {metadata.get('normalization', 'None')}
+                - **Features:** {metadata.get('training_details', {}).get('n_features', 31)} engineered features
+                
+                **Training Dataset:**
+                - **Training Samples:** {metadata.get('training_details', {}).get('n_samples_train', 69851):,}
+                - **Test Samples:** {metadata.get('training_details', {}).get('n_samples_test', 17463):,}
+                - **Total Size:** ~87,000 weather observations
+                
+                **Target Classes:**
+                """)
+                for cls in metadata.get('target_classes', []):
+                    st.markdown(f"- {cls}")
+                
+                st.markdown("""
+                **Feature Engineering Pipeline:**
+                - **Temporal Features:** Year, Month, Day, Hour, cyclical encoding (sin/cos)
+                - **Interaction Terms:** Temp×Humidity, Pressure×Temp, Cloud×Humidity
+                - **Polynomial Features:** Temp², Wind Speed²
+                - **Wind Components:** North-South, East-West decomposition
+                - **Derived Features:** Feels-like difference, visibility/humidity ratio
+                - **Binary Indicators:** Is_Winter, Is_Summer, Is_Day, Low/High Pressure
+                
+                **Preprocessing:**
+                - **Imputation:** Iterative Imputer (BayesianRidge) or Distribution Sampling
+                - **Dropped:** Formatted Date, Daily Summary, duplicate columns
+                
+                **Performance Context:**
+                - 64.7% accuracy across 4 classes (baseline: 25%)
+                - ROC-AUC 0.849 indicates good discrimination
+                - Complex multi-class problem with overlapping boundaries
+                """)
+        
+        else:
+            st.warning("⚠️ **Model Not Available**")
+            st.info("""
+            **To use Weather Classification:**
+            
+            1. Train the model:
+            ```bash
+            python encoding_comparison.py
+            ```
+            
+            2. Model will be saved to: `weather_classification_models/`
+            
+            3. Refresh this page
+            """)
+            st.markdown("**Note:** Model size ~1GB (not included in repository)")
+    
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
+
+# ============================================================================
+# PREDICTION SECTION 6: WIND TURBINE POWER FORECASTING
+# ============================================================================
+
+elif "Wind Turbine" in model_choice:
+    
+    st.markdown("### 🌬️ Wind Turbine Power Forecasting")
+    st.caption("Predict future LV ActivePower (kW) using time series ML models")
+    
+    try:
+        # Model paths
+        model_dir = "Wind Turbine Scada dataset"
+        
+        # Load metadata from CSV results
+        univariate_results = pd.read_csv(f"{model_dir}/forecasting_results_summary.csv")
+        multivariate_results = pd.read_csv(f"{model_dir}/multivariate_forecasting_results_summary.csv")
+        multistep_results = pd.read_csv(f"{model_dir}/multivariate_multistep_results.csv")
+        
+        st.success("✅ Models Ready: Univariate, Multivariate, Multi-Step Forecasting")
+        
+        # Info box about the dataset
+        st.info("""
+        **Dataset:** SCADA (Supervisory Control and Data Acquisition) data from wind turbine  
+        **Target:** LV ActivePower (kW) - Low Voltage Active Power output  
+        **Frequency:** 10-minute intervals  
+        **Window Size:** 24 steps (4 hours of historical data)
+        """)
+        
+        st.markdown("---")
+        
+        # User controls
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            forecast_type = st.selectbox(
+                "🎯 Forecast Type",
+                ["Univariate (Power Only)", "Multivariate (Power + Weather)", "Multi-Step (Next Hour)"],
+                help="Univariate uses only historical power data. Multivariate includes weather features. Multi-Step predicts next 6 steps (1 hour)."
+            )
+        
+        with col2:
+            if "Multivariate" in forecast_type:
+                st.info("**Fixed:** 1 step ahead (next 10 minutes)")
+                horizon = 1
+            elif "Multi-Step" in forecast_type:
+                st.info("**Fixed:** 6 steps ahead (next hour)")
+                horizon = 6
+            else:  # Univariate
+                horizon_options = {
+                    "1 step (10 min)": 1,
+                    "6 steps (1 hour)": 6,
+                    "12 steps (2 hours)": 12,
+                    "36 steps (6 hours)": 36,
+                    "144 steps (24 hours)": 144
+                }
+                horizon_label = st.selectbox("⏰ Forecast Horizon", list(horizon_options.keys()))
+                horizon = horizon_options[horizon_label]
+        
+        st.markdown("---")
+        
+        # Load and display historical data
+        try:
+            df = pd.read_csv(f"{model_dir}/T1.csv")
+            target_col = 'LV ActivePower (kW)'
+            
+            # Show last 100 observations (for context)
+            last_observations = df[target_col].tail(100).values
+            
+            st.markdown("### 📊 Recent Historical Data")
+            st.caption("Last 100 observations (16.7 hours of data)")
+            
+            fig_hist, ax_hist = plt.subplots(figsize=(12, 4))
+            ax_hist.plot(range(len(last_observations)), last_observations, label='Historical Power', color='steelblue', linewidth=1.5)
+            ax_hist.set_xlabel('Time Steps (10-min intervals)')
+            ax_hist.set_ylabel('LV ActivePower (kW)')
+            ax_hist.set_title('Recent Wind Turbine Power Output')
+            ax_hist.grid(True, alpha=0.3)
+            ax_hist.legend()
+            st.pyplot(fig_hist)
+            plt.close()
+            
+        except Exception as e:
+            st.warning(f"Could not load historical data: {str(e)}")
+        
+        st.markdown("---")
+        
+        # Handle Multivariate separately (doesn't need button inside button)
+        if "Multivariate" in forecast_type:
+            try:
+                with open(f"{model_dir}/best_multivariate_model.pkl", 'rb') as f:
+                    model_dict = pickle.load(f)
+                
+                model = model_dict['model']
+                scaler = model_dict['scaler']
+                window_size = model_dict['window_size']
+                all_features = model_dict['all_features']
+                target_idx = model_dict['target_idx']
+                
+                st.success("✅ Using Ridge Regression Multivariate Model (R²=0.9713)")
+                
+                st.info("""
+                **True Multivariate Forecasting:** Uses **power history + weather features**  
+                **Input:** Last 24 steps of [Power, Wind Speed, Theoretical Power, Wind Direction]  
+                **Output:** Next power value (10 minutes ahead)
+                """)
+                
+                # Get last row from dataset as defaults for weather
+                weather_cols = ['Wind Speed (m/s)', 'Theoretical_Power_Curve (KWh)', 'Wind Direction (°)']
+                last_row = df[weather_cols].iloc[-1]
+                
+                st.markdown("### 🌤️ Current Weather Conditions")
+                st.caption("Using most recent measurements from dataset (modify if needed)")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    wind_speed = st.number_input(
+                        "💨 Wind Speed (m/s)", 
+                        min_value=0.0, 
+                        max_value=25.0, 
+                        value=float(last_row['Wind Speed (m/s)']),
+                        step=0.1,
+                        help="Current wind speed in meters per second"
+                    )
+                
+                with col2:
+                    theoretical_power = st.number_input(
+                        "⚡ Theoretical Power (KWh)", 
+                        min_value=0.0, 
+                        max_value=3500.0, 
+                        value=float(last_row['Theoretical_Power_Curve (KWh)']),
+                        step=10.0,
+                        help="Expected power from theoretical power curve"
+                    )
+                
+                with col3:
+                    wind_direction = st.number_input(
+                        "🧭 Wind Direction (°)", 
+                        min_value=0.0, 
+                        max_value=360.0, 
+                        value=float(last_row['Wind Direction (°)']),
+                        step=1.0,
+                        help="Wind direction in degrees (0-360)"
+                    )
+                
+                st.markdown("---")
+                
+                if st.button("🔮 Predict Next 10 Minutes", type="primary", use_container_width=True):
+                    
+                    st.markdown("### 📈 Multivariate Forecast Results")
+                    
+                    # Get historical window data - ALL features (power + weather)
+                    last_window_data = df[all_features].tail(window_size).values
+                    
+                    # Use historical window with updated current weather
+                    input_window = last_window_data.copy()
+                    
+                    # Update last row with user input (weather only, keep last power value)
+                    # Find indices of weather features in all_features
+                    wind_speed_idx = all_features.index('Wind Speed (m/s)')
+                    theoretical_power_idx = all_features.index('Theoretical_Power_Curve (KWh)')
+                    wind_direction_idx = all_features.index('Wind Direction (°)')
+                    
+                    input_window[-1, wind_speed_idx] = wind_speed
+                    input_window[-1, theoretical_power_idx] = theoretical_power
+                    input_window[-1, wind_direction_idx] = wind_direction
+                    
+                    # Scale the input
+                    input_scaled = scaler.transform(input_window)
+                    X_input = input_scaled.flatten().reshape(1, -1)
+                    
+                    # Predict next step
+                    pred_scaled = model.predict(X_input)
+                    
+                    # Inverse transform - reconstruct full feature array
+                    pred_full = np.zeros((1, len(all_features)))
+                    pred_full[0, target_idx] = pred_scaled[0]
+                    prediction = scaler.inverse_transform(pred_full)[0, target_idx]
+                    
+                    st.success(f"✅ Next 10-minute prediction: **{prediction:.2f} kW**")
+                    
+                    # Display prediction
+                    col1, col2 = st.columns([2, 1])
+                    
+                    with col1:
+                        fig, ax = plt.subplots(figsize=(10, 5))
+                        
+                        # Historical
+                        hist_steps = 24
+                        hist_data = df[target_col].tail(hist_steps).values
+                        ax.plot(range(-hist_steps, 0), hist_data, 
+                               label='Historical', color='steelblue', linewidth=2, marker='o', markersize=4)
+                        
+                        # Prediction
+                        ax.plot([0], [prediction], 
+                               label='Predicted (Next 10min)', color='coral', 
+                               marker='s', markersize=12, linestyle='none')
+                        
+                        ax.axvline(x=0, color='red', linestyle=':', alpha=0.5, label='Now')
+                        ax.set_xlabel('Time Steps (10-min intervals)')
+                        ax.set_ylabel('LV ActivePower (kW)')
+                        ax.set_title('Multivariate Forecast - Next Step')
+                        ax.grid(True, alpha=0.3)
+                        ax.legend()
+                        st.pyplot(fig)
+                        plt.close()
+                    
+                    with col2:
+                        st.markdown("**📊 Input Summary**")
+                        st.metric("Wind Speed", f"{wind_speed:.1f} m/s")
+                        st.metric("Theoretical Power", f"{theoretical_power:.1f} KWh")
+                        st.metric("Wind Direction", f"{wind_direction:.0f}°")
+                        st.metric("**Predicted Power**", f"{prediction:.2f} kW")
+                    
+                    st.info("""
+                    **Note:** Multivariate model predicts only **1 step ahead** (next 10 minutes).  
+                    Uses both power history and weather features for better accuracy.
+                    """)
+            
+            except Exception as e:
+                st.error(f"Error loading multivariate model: {str(e)}")
+                st.info("""
+                **Multivariate model may not be available or needs retraining.**
+                
+                The updated multivariate model requires:
+                - `best_multivariate_model.pkl` with scaler, model, window_size, all_features, target_idx
+                - Historical data with power + weather features
+                
+                **To retrain with the improved approach:**
+                ```bash
+                cd "Wind Turbine Scada dataset"
+                python multivariate_forecasting.py
+                ```
+                """)
+        
+        # Generate Forecast Button (for Univariate and Multi-Step only)
+        elif st.button("🔮 Generate Forecast", type="primary", use_container_width=True):
+            
+            st.markdown("### 📈 Forecast Results")
+            
+            if "Univariate" in forecast_type:
+                # Load univariate model
+                try:
+                    with open(f"{model_dir}/best_model.pkl", 'rb') as f:
+                        model_dict = pickle.load(f)
+                    
+                    model = model_dict['model']
+                    scaler = model_dict['scaler']
+                    window_size = model_dict['window_size']
+                    
+                    # Get best model info
+                    best_model = univariate_results.loc[univariate_results['r2'].idxmax()]
+                    
+                    st.success(f"✅ Using {best_model['model']} (R²={best_model['r2']:.4f})")
+                    
+                    # Simulate forecast (recursive prediction for multi-step)
+                    last_window = df[target_col].tail(window_size).values.reshape(-1, 1)
+                    last_window_scaled = scaler.transform(last_window)
+                    
+                    predictions = []
+                    current_window = last_window_scaled.flatten()
+                    
+                    for step in range(horizon):
+                        # Predict next step
+                        X_input = current_window.reshape(1, -1)
+                        pred_scaled = model.predict(X_input)
+                        pred_actual = scaler.inverse_transform(pred_scaled.reshape(-1, 1))[0, 0]
+                        predictions.append(pred_actual)
+                        
+                        # Update window for next prediction
+                        if step < horizon - 1:
+                            # Shift window: remove oldest value, append new prediction
+                            # This is called "recursive forecasting" - each prediction becomes input for the next
+                            current_window = np.append(current_window[1:], pred_scaled)
+                    
+                    # Display forecast
+                    forecast_df = pd.DataFrame({
+                        'Step': range(1, horizon + 1),
+                        'Time Ahead (min)': [(i * 10) for i in range(1, horizon + 1)],
+                        'Predicted Power (kW)': predictions
+                    })
+                    
+                    col1, col2 = st.columns([2, 1])
+                    
+                    with col1:
+                        # Plot forecast
+                        fig, ax = plt.subplots(figsize=(10, 5))
+                        
+                        # Historical (last 24 steps)
+                        hist_steps = min(24, len(last_observations))
+                        ax.plot(range(-hist_steps, 0), last_observations[-hist_steps:], 
+                               label='Historical', color='steelblue', linewidth=2, marker='o', markersize=4)
+                        
+                        # Forecast
+                        ax.plot(range(0, horizon), predictions, 
+                               label='Forecast', color='coral', linewidth=2, marker='s', markersize=4, linestyle='--')
+                        
+                        ax.axvline(x=0, color='red', linestyle=':', alpha=0.5, label='Forecast Start')
+                        ax.set_xlabel('Time Steps (10-min intervals)')
+                        ax.set_ylabel('LV ActivePower (kW)')
+                        ax.set_title(f'Wind Turbine Power Forecast - Next {horizon} Steps')
+                        ax.grid(True, alpha=0.3)
+                        ax.legend()
+                        st.pyplot(fig)
+                        plt.close()
+                    
+                    with col2:
+                        st.markdown("**📋 Forecast Table**")
+                        st.dataframe(forecast_df, hide_index=True)
+                    
+                    # Summary statistics
+                    st.markdown("### 📊 Forecast Summary")
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Average Power", f"{np.mean(predictions):.2f} kW")
+                    with col2:
+                        st.metric("Max Power", f"{np.max(predictions):.2f} kW")
+                    with col3:
+                        st.metric("Min Power", f"{np.min(predictions):.2f} kW")
+                    with col4:
+                        st.metric("Std Dev", f"{np.std(predictions):.2f} kW")
+                    
+                    # Explanation of recursive forecasting
+                    with st.expander("ℹ️ How Univariate Multi-Step Forecasting Works"):
+                        st.markdown("""
+                        **Recursive (Iterative) Forecasting Strategy:**
+                        
+                        The model uses **recursive prediction** to forecast multiple steps ahead:
+                        
+                        1. **Step 1:** Use last 24 historical power values → Predict power at t+1
+                        2. **Step 2:** Shift window (remove oldest, add predicted t+1) → Predict power at t+2
+                        3. **Step 3:** Shift window (remove oldest, add predicted t+2) → Predict power at t+3
+                        4. **Continue...** until reaching the desired horizon
+                        
+                        **Advantages:**
+                        - ✅ Can forecast any horizon (1 to 144+ steps)
+                        - ✅ Uses only historical power data (no weather needed)
+                        - ✅ Simple and interpretable
+                        
+                        **Limitations:**
+                        - ⚠️ Errors accumulate over time (each prediction feeds the next)
+                        - ⚠️ Accuracy decreases for longer horizons
+                        - ⚠️ Assumes future patterns similar to recent history
+                        
+                        **Current Window Size:** 24 steps (4 hours of 10-min data)
+                        """)
+                    
+                except Exception as e:
+                    st.error(f"Error loading univariate model: {str(e)}")
+                    
+            elif "Multivariate" in forecast_type:
+                st.info("ℹ️ **Multivariate model predicts 1 step ahead (10 minutes) using weather + power data**")
+                # This section is outside the main button to avoid nesting
+                pass
+                
+            else:  # Multi-Step
+                # Load multi-step model
+                try:
+                    with open(f"{model_dir}/best_multistep_model.pkl", 'rb') as f:
+                        model_dict = pickle.load(f)
+                    
+                    model = model_dict['model']
+                    scaler_X = model_dict['scaler_X']
+                    scaler_y = model_dict['scaler_y']
+                    window_size = model_dict['window_size']
+                    feature_columns = model_dict.get('feature_columns', 
+                                                     ['LV ActivePower (kW)', 'Wind Speed (m/s)', 
+                                                      'Theoretical_Power_Curve (KWh)', 'Wind Direction (°)'])
+                    
+                    st.success("✅ Using Ridge Regression Multi-Step Model")
+                    
+                    st.info("""
+                    **Multi-Step Model:** Predicts all 6 future steps **simultaneously** (not recursively)  
+                    **Direct Strategy:** One model input → Six outputs [t+1, t+2, t+3, t+4, t+5, t+6]  
+                    **Input Features:** Power history + Weather features (all 4 features × 24 steps)
+                    """)
+                    
+                    # Get last window of ALL features (power + weather)
+                    last_window = df[feature_columns].tail(window_size).values
+                    last_window_scaled = scaler_X.transform(last_window)
+                    X_input = last_window_scaled.flatten().reshape(1, -1)
+                    
+                    # Predict all 6 steps at once - model outputs a 2D array with 6 values
+                    predictions_scaled = model.predict(X_input)  # Shape: (1, 6)
+                    
+                    # Reshape for inverse transform: (1, 6) -> (6, 1) -> scale back -> flatten
+                    predictions_2d = predictions_scaled.reshape(-1, 1)  # Shape: (6, 1)
+                    predictions = scaler_y.inverse_transform(predictions_2d).flatten()  # Shape: (6,)
+                    
+                    # Display forecast with enhanced visualization
+                    st.markdown("### 🎯 Next Hour Forecast (6 Steps = 60 minutes)")
+                    
+                    forecast_df = pd.DataFrame({
+                        'Step': range(1, 7),
+                        'Time Ahead': ['10 min', '20 min', '30 min', '40 min', '50 min', '60 min'],
+                        'Predicted Power (kW)': predictions
+                    })
+                    
+                    col1, col2 = st.columns([2, 1])
+                    
+                    with col1:
+                        # Enhanced visualization
+                        fig, ax = plt.subplots(figsize=(12, 6))
+                        
+                        # Historical (last 24 steps = 4 hours)
+                        hist_steps = 24
+                        hist_data = last_observations[-hist_steps:]
+                        ax.plot(range(-hist_steps, 0), hist_data, 
+                               label='Historical (Last 4 Hours)', color='steelblue', 
+                               linewidth=2.5, marker='o', markersize=5, alpha=0.8)
+                        
+                        # Forecast
+                        ax.plot(range(0, 6), predictions, 
+                               label='Forecast (Next Hour)', color='coral', 
+                               linewidth=2.5, marker='s', markersize=7, linestyle='--')
+                        
+                        # Add value annotations on forecast points
+                        for i, val in enumerate(predictions):
+                            ax.annotate(f'{val:.1f}', 
+                                       xy=(i, val), 
+                                       xytext=(0, 10), 
+                                       textcoords='offset points',
+                                       ha='center', 
+                                       fontsize=9,
+                                       bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.7))
+                        
+                        ax.axvline(x=0, color='red', linestyle=':', linewidth=2, alpha=0.6, label='Now')
+                        ax.fill_between(range(0, 6), predictions, alpha=0.2, color='coral')
+                        
+                        ax.set_xlabel('Time Steps (10-min intervals)', fontsize=12, fontweight='bold')
+                        ax.set_ylabel('LV ActivePower (kW)', fontsize=12, fontweight='bold')
+                        ax.set_title('Wind Turbine Power Forecast - Next Hour (Multi-Step Prediction)', 
+                                    fontsize=14, fontweight='bold')
+                        ax.grid(True, alpha=0.3, linestyle='--')
+                        ax.legend(fontsize=11, loc='best')
+                        
+                        # Add shaded region for forecast
+                        ax.axvspan(0, 5, alpha=0.1, color='coral', label='_Forecast Region')
+                        
+                        st.pyplot(fig)
+                        plt.close()
+                    
+                    with col2:
+                        st.markdown("**📋 Forecast Table**")
+                        st.dataframe(forecast_df, hide_index=True)
+                        
+                        # Trend indicator
+                        trend = "📈 Increasing" if predictions[-1] > predictions[0] else "📉 Decreasing"
+                        change = ((predictions[-1] - predictions[0]) / predictions[0]) * 100
+                        st.metric("Trend (10min → 60min)", trend, f"{change:+.2f}%")
+                    
+                    # Detailed statistics
+                    st.markdown("### 📊 Detailed Forecast Analysis")
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Average Power", f"{np.mean(predictions):.2f} kW", 
+                                 help="Mean predicted power over next hour")
+                    with col2:
+                        st.metric("Peak Power", f"{np.max(predictions):.2f} kW",
+                                 help="Maximum predicted power")
+                    with col3:
+                        st.metric("Min Power", f"{np.min(predictions):.2f} kW",
+                                 help="Minimum predicted power")
+                    with col4:
+                        st.metric("Variability", f"{np.std(predictions):.2f} kW",
+                                 help="Standard deviation (power fluctuation)")
+                    
+                    # Step-by-step performance from validation
+                    st.markdown("### 🎯 Model Performance (Per Step)")
+                    st.caption("Each step's accuracy degrades slightly as we predict further into the future")
+                    
+                    ridge_steps = multistep_results[multistep_results['model'] == 'Ridge Regression']
+                    
+                    perf_cols = st.columns(6)
+                    for idx, (_, row) in enumerate(ridge_steps.iterrows()):
+                        with perf_cols[idx]:
+                            st.caption(f"**Step {row['step']}** ({row['step']*10}min)")
+                            st.metric("R²", f"{row['r2']:.4f}", help=f"RMSE: {row['rmse']:.2f}, MAE: {row['mae']:.2f}")
+                    
+                    # Explanation of multi-step vs recursive
+                    with st.expander("ℹ️ Multi-Step vs Recursive Forecasting - Key Differences"):
+                        st.markdown("""
+                        **Multi-Step (Direct) Strategy:**
+                        
+                        🎯 **How it works:**
+                        - Single model predicts **all 6 future values simultaneously**
+                        - Input: Last 24 historical power values
+                        - Output: Vector of 6 predictions `[t+1, t+2, t+3, t+4, t+5, t+6]`
+                        - Each output neuron/estimator learns to predict a specific time step
+                        
+                        **Advantages:**
+                        - ✅ **Faster:** One model call predicts entire hour
+                        - ✅ **No error accumulation:** Each step predicted independently
+                        - ✅ **Captures step-specific patterns:** Separate parameters for each horizon
+                        - ✅ **More stable:** Predictions don't feed back into inputs
+                        
+                        **Limitations:**
+                        - ⚠️ **Fixed horizon:** Can only predict exactly 6 steps (as trained)
+                        - ⚠️ **More training data needed:** Requires examples for all 6 steps
+                        - ⚠️ **Higher complexity:** Effectively training 6 models in one
+                        
+                        ---
+                        
+                        **Recursive (Iterative) Strategy (used in Univariate):**
+                        
+                        🔄 **How it works:**
+                        - Model predicts only **1 step ahead**
+                        - Prediction is appended to input window
+                        - Process repeats for next step (using previous prediction)
+                        
+                        **Comparison:**
+                        - 📊 **Multi-Step:** Better accuracy, faster inference, fixed horizon
+                        - 🔄 **Recursive:** Flexible horizon, simpler model, error accumulation
+                        
+                        **Current Model:** Ridge Regression with Direct Multi-Step Strategy
+                        """)
+                    
+                except Exception as e:
+                    st.error(f"Error loading multi-step model: {str(e)}")
+        
+        # Model Performance Section (Always Visible)
+        st.markdown("---")
+        st.markdown("### 📊 Model Performance Comparison")
+        
+        tab1, tab2, tab3 = st.tabs(["Univariate Models", "Multivariate Models", "Multi-Step Performance"])
+        
+        with tab1:
+            st.caption("Single-step ahead forecasting using only historical power data")
+            
+            # Display top models
+            top_uni = univariate_results.nsmallest(4, 'rmse')[['model', 'window_size', 'scaler', 'rmse', 'mae', 'r2']]
+            
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.dataframe(top_uni, hide_index=True)
+            
+            with col2:
+                best_uni = univariate_results.loc[univariate_results['r2'].idxmax()]
+                st.success(f"**Best Model:** {best_uni['model']}")
+                st.metric("R² Score", f"{best_uni['r2']:.4f}")
+                st.metric("RMSE", f"{best_uni['rmse']:.2f} kW")
+                st.metric("MAE", f"{best_uni['mae']:.2f} kW")
+        
+        with tab2:
+            st.caption("Single-step ahead forecasting using power + weather features")
+            
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.dataframe(multivariate_results, hide_index=True)
+            
+            with col2:
+                best_multi = multivariate_results.loc[multivariate_results['r2'].idxmax()]
+                st.success(f"**Best Model:** {best_multi['model']}")
+                st.metric("R² Score", f"{best_multi['r2']:.4f}")
+                st.metric("RMSE", f"{best_multi['rmse']:.2f} kW")
+                st.metric("MAE", f"{best_multi['mae']:.2f} kW")
+        
+        with tab3:
+            st.caption("6-step ahead forecasting (next hour) - per-step performance")
+            
+            # Show Ridge Regression results (best model)
+            ridge_steps = multistep_results[multistep_results['model'] == 'Ridge Regression']
+            
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.dataframe(ridge_steps[['step', 'rmse', 'mae', 'r2']], hide_index=True)
+            
+            with col2:
+                st.success("**Model:** Ridge Regression")
+                avg_r2 = ridge_steps['r2'].mean()
+                avg_rmse = ridge_steps['rmse'].mean()
+                st.metric("Avg R² (6 steps)", f"{avg_r2:.4f}")
+                st.metric("Avg RMSE", f"{avg_rmse:.2f} kW")
+                st.info(f"**Step 1 R²:** {ridge_steps.iloc[0]['r2']:.4f}\n\n**Step 6 R²:** {ridge_steps.iloc[5]['r2']:.4f}")
+        
+        # Technical details
+        with st.expander("ℹ️ Technical Details & Methodology"):
+            st.markdown("""
+            **Forecasting Approach:**
+            - **Univariate:** Uses only historical LV ActivePower values
+            - **Multivariate:** Incorporates Wind Speed, Theoretical Power Curve, Wind Direction
+            - **Multi-Step:** Direct strategy - predicts all 6 future steps simultaneously
+            
+            **Feature Engineering:**
+            - **Window Size:** 24 time steps (4 hours of history at 10-min intervals)
+            - **Sliding Window:** Creates overlapping sequences for training
+            - **Scaling:** MinMaxScaler (0,1) for better neural network convergence
+            
+            **Models Tested:**
+            - Linear Regression (baseline, interpretable)
+            - Ridge Regression (L2 regularization, best performer)
+            - Random Forest (non-linear patterns, robust to outliers)
+            - XGBoost (gradient boosting, handles complex relationships)
+            
+            **Training Strategy:**
+            - **Split:** 80% train, 20% test (chronological split, no shuffle)
+            - **Validation:** Walk-forward validation for time series
+            - **Metrics:** RMSE (primary), MAE, R², MAPE
+            
+            **Key Findings:**
+            - Ridge Regression achieved best single-step performance (R²=0.9714)
+            - Univariate models outperformed multivariate (simpler is better here)
+            - Performance degrades slightly for longer horizons (expected)
+            - Window size of 24 steps provides optimal history-complexity tradeoff
+            
+            **Production Deployment:**
+            - Models saved with pickle (model + scaler + window_size)
+            - Real-time prediction requires last 24 power measurements
+            - Recursive strategy enables arbitrary forecast horizons
+            - Multi-step model provides fast 1-hour forecasts
+            """)
+    
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
+        st.info("""
+        **To use Wind Turbine Forecasting:**
+        
+        Ensure the following files exist in `Wind Turbine Scada dataset/`:
+        - `best_model.pkl` (univariate)
+        - `best_multivariate_model.pkl`
+        - `best_multistep_model.pkl`
+        - `T1.csv` (dataset)
+        - Result CSV files
+        """)
+
+# ============================================================================
+# PREDICTION SECTION 7: WEATHER CLASSIFICATION (FALLBACK)
 # ============================================================================
 
 else:  # Weather Classification
