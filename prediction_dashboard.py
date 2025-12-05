@@ -1572,23 +1572,17 @@ elif "Wind Turbine" in model_choice:
                         model_dict = pickle.load(f)
                     
                     model = model_dict['model']
-<<<<<<< HEAD
                     scaler_X = model_dict['scaler_X']
                     scaler_y = model_dict['scaler_y']
                     window_size = model_dict['window_size']
                     feature_columns = model_dict.get('feature_columns', 
                                                      ['LV ActivePower (kW)', 'Wind Speed (m/s)', 
                                                       'Theoretical_Power_Curve (KWh)', 'Wind Direction (°)'])
-=======
-                    scaler = model_dict['scaler']
-                    window_size = model_dict['window_size']
->>>>>>> 911d71e0d026aff629ddffaadff2a1046b986497
                     
                     st.success("✅ Using Ridge Regression Multi-Step Model")
                     
                     st.info("""
                     **Multi-Step Model:** Predicts all 6 future steps **simultaneously** (not recursively)  
-<<<<<<< HEAD
                     **Direct Strategy:** One model input → Six outputs [t+1, t+2, t+3, t+4, t+5, t+6]  
                     **Input Features:** Power history + Weather features (all 4 features × 24 steps)
                     """)
@@ -1596,14 +1590,6 @@ elif "Wind Turbine" in model_choice:
                     # Get last window of ALL features (power + weather)
                     last_window = df[feature_columns].tail(window_size).values
                     last_window_scaled = scaler_X.transform(last_window)
-=======
-                    **Direct Strategy:** One model input → Six outputs [t+1, t+2, t+3, t+4, t+5, t+6]
-                    """)
-                    
-                    # Get last window
-                    last_window = df[target_col].tail(window_size).values.reshape(-1, 1)
-                    last_window_scaled = scaler.transform(last_window)
->>>>>>> 911d71e0d026aff629ddffaadff2a1046b986497
                     X_input = last_window_scaled.flatten().reshape(1, -1)
                     
                     # Predict all 6 steps at once - model outputs a 2D array with 6 values
@@ -1611,11 +1597,7 @@ elif "Wind Turbine" in model_choice:
                     
                     # Reshape for inverse transform: (1, 6) -> (6, 1) -> scale back -> flatten
                     predictions_2d = predictions_scaled.reshape(-1, 1)  # Shape: (6, 1)
-<<<<<<< HEAD
                     predictions = scaler_y.inverse_transform(predictions_2d).flatten()  # Shape: (6,)
-=======
-                    predictions = scaler.inverse_transform(predictions_2d).flatten()  # Shape: (6,)
->>>>>>> 911d71e0d026aff629ddffaadff2a1046b986497
                     
                     # Display forecast with enhanced visualization
                     st.markdown("### 🎯 Next Hour Forecast (6 Steps = 60 minutes)")
