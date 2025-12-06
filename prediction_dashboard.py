@@ -176,7 +176,8 @@ model_choice = st.sidebar.radio(
         "🌡️ Temperature Prediction (Ensemble)",
         "🎯 Multi-Output (Pressure & Humidity)",
         "☁️ Weather Classification (4-class)",
-        "🌬️ Wind Turbine Power Forecasting (Time Series)"
+        "🌬️ Wind Turbine Power Forecasting (Time Series)",
+        "⚡ PJM Energy Consumption Forecasting (Hourly)"
     ]
 )
 
@@ -236,6 +237,16 @@ if "Wind Turbine" in model_choice:
     **Algorithm:** Ridge Regression  
     **R² Score:** 0.9714  
     **Target:** LV ActivePower (kW)
+    """)
+
+if "PJM Energy" in model_choice:
+    st.sidebar.success("✅ **Ready**")
+    st.sidebar.info("""
+    **Type:** Time Series Forecasting  
+    **Algorithm:** Ridge Regression  
+    **R² Score:** 0.9983  
+    **Target:** PJME (MWh)  
+    **Data:** 145K hours (2002-2018)
     """)
 
 st.sidebar.markdown("---")
@@ -1572,24 +1583,20 @@ elif "Wind Turbine" in model_choice:
                         model_dict = pickle.load(f)
                     
                     model = model_dict['model']
-                    scaler_X = model_dict['scaler_X']
-                    scaler_y = model_dict['scaler_y']
+                    scaler = model_dict['scaler']
                     window_size = model_dict['window_size']
-                    feature_columns = model_dict.get('feature_columns', 
-                                                     ['LV ActivePower (kW)', 'Wind Speed (m/s)', 
-                                                      'Theoretical_Power_Curve (KWh)', 'Wind Direction (°)'])
                     
                     st.success("✅ Using Ridge Regression Multi-Step Model")
                     
                     st.info("""
                     **Multi-Step Model:** Predicts all 6 future steps **simultaneously** (not recursively)  
                     **Direct Strategy:** One model input → Six outputs [t+1, t+2, t+3, t+4, t+5, t+6]  
-                    **Input Features:** Power history + Weather features (all 4 features × 24 steps)
+                    **Input:** Power history only (24 steps)
                     """)
                     
-                    # Get last window of ALL features (power + weather)
-                    last_window = df[feature_columns].tail(window_size).values
-                    last_window_scaled = scaler_X.transform(last_window)
+                    # Get last window - only power (univariate)
+                    last_window = df[target_col].tail(window_size).values.reshape(-1, 1)
+                    last_window_scaled = scaler.transform(last_window)
                     X_input = last_window_scaled.flatten().reshape(1, -1)
                     
                     # Predict all 6 steps at once - model outputs a 2D array with 6 values
@@ -1597,7 +1604,7 @@ elif "Wind Turbine" in model_choice:
                     
                     # Reshape for inverse transform: (1, 6) -> (6, 1) -> scale back -> flatten
                     predictions_2d = predictions_scaled.reshape(-1, 1)  # Shape: (6, 1)
-                    predictions = scaler_y.inverse_transform(predictions_2d).flatten()  # Shape: (6,)
+                    predictions = scaler.inverse_transform(predictions_2d).flatten()  # Shape: (6,)
                     
                     # Display forecast with enhanced visualization
                     st.markdown("### 🎯 Next Hour Forecast (6 Steps = 60 minutes)")
@@ -1730,60 +1737,45 @@ elif "Wind Turbine" in model_choice:
                 except Exception as e:
                     st.error(f"Error loading multi-step model: {str(e)}")
         
-        # Model Performance Section (Always Visible)
+        # Model Performance Section (Always Visible) - Only Best Models
         st.markdown("---")
-        st.markdown("### 📊 Model Performance Comparison")
+        st.markdown("### 📊 Best Model Performance Summary")
         
-        tab1, tab2, tab3 = st.tabs(["Univariate Models", "Multivariate Models", "Multi-Step Performance"])
+        col1, col2, col3 = st.columns(3)
         
-        with tab1:
-            st.caption("Single-step ahead forecasting using only historical power data")
-            
-            # Display top models
-            top_uni = univariate_results.nsmallest(4, 'rmse')[['model', 'window_size', 'scaler', 'rmse', 'mae', 'r2']]
-            
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                st.dataframe(top_uni, hide_index=True)
-            
-            with col2:
-                best_uni = univariate_results.loc[univariate_results['r2'].idxmax()]
-                st.success(f"**Best Model:** {best_uni['model']}")
-                st.metric("R² Score", f"{best_uni['r2']:.4f}")
-                st.metric("RMSE", f"{best_uni['rmse']:.2f} kW")
-                st.metric("MAE", f"{best_uni['mae']:.2f} kW")
+        with col1:
+            st.markdown("#### 🔵 Univariate")
+            st.caption("1-step ahead, power only")
+            best_uni = univariate_results.loc[univariate_results['r2'].idxmax()]
+            st.success(f"**{best_uni['model']}**")
+            st.metric("R² Score", f"{best_uni['r2']:.4f}")
+            st.metric("RMSE", f"{best_uni['rmse']:.2f} kW")
+            st.metric("Window", f"{int(best_uni['window_size'])} steps")
         
-        with tab2:
-            st.caption("Single-step ahead forecasting using power + weather features")
-            
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                st.dataframe(multivariate_results, hide_index=True)
-            
-            with col2:
-                best_multi = multivariate_results.loc[multivariate_results['r2'].idxmax()]
-                st.success(f"**Best Model:** {best_multi['model']}")
-                st.metric("R² Score", f"{best_multi['r2']:.4f}")
-                st.metric("RMSE", f"{best_multi['rmse']:.2f} kW")
-                st.metric("MAE", f"{best_multi['mae']:.2f} kW")
+        with col2:
+            st.markdown("#### 🟢 Multivariate")
+            st.caption("1-step ahead, power + weather")
+            best_multi = multivariate_results.loc[multivariate_results['r2'].idxmax()]
+            st.success(f"**{best_multi['model']}**")
+            st.metric("R² Score", f"{best_multi['r2']:.4f}")
+            st.metric("RMSE", f"{best_multi['rmse']:.2f} kW")
+            st.metric("Window", "24 steps")
         
-        with tab3:
-            st.caption("6-step ahead forecasting (next hour) - per-step performance")
+        with col3:
+            st.markdown("#### 🟠 Multi-Step")
+            st.caption("6-step direct forecast")
+            # Get best model from multi-step results (average R² across steps)
+            # Group by model and calculate average metrics
+            multistep_avg = multistep_results.groupby('model').agg({
+                'r2': 'mean',
+                'rmse': 'mean'
+            }).reset_index()
+            best_multistep = multistep_avg.loc[multistep_avg['r2'].idxmax()]
             
-            # Show Ridge Regression results (best model)
-            ridge_steps = multistep_results[multistep_results['model'] == 'Ridge Regression']
-            
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                st.dataframe(ridge_steps[['step', 'rmse', 'mae', 'r2']], hide_index=True)
-            
-            with col2:
-                st.success("**Model:** Ridge Regression")
-                avg_r2 = ridge_steps['r2'].mean()
-                avg_rmse = ridge_steps['rmse'].mean()
-                st.metric("Avg R² (6 steps)", f"{avg_r2:.4f}")
-                st.metric("Avg RMSE", f"{avg_rmse:.2f} kW")
-                st.info(f"**Step 1 R²:** {ridge_steps.iloc[0]['r2']:.4f}\n\n**Step 6 R²:** {ridge_steps.iloc[5]['r2']:.4f}")
+            st.success(f"**{best_multistep['model']}**")
+            st.metric("Avg R² (6 steps)", f"{best_multistep['r2']:.4f}")
+            st.metric("Avg RMSE", f"{best_multistep['rmse']:.2f} kW")
+            st.metric("Window", "24 steps")
         
         # Technical details
         with st.expander("ℹ️ Technical Details & Methodology"):
@@ -1836,7 +1828,469 @@ elif "Wind Turbine" in model_choice:
         """)
 
 # ============================================================================
-# PREDICTION SECTION 7: WEATHER CLASSIFICATION (FALLBACK)
+# PREDICTION SECTION 7: PJM ENERGY CONSUMPTION FORECASTING
+# ============================================================================
+
+elif "PJM Energy" in model_choice:
+    
+    st.markdown("### ⚡ PJM Energy Consumption Forecasting")
+    st.caption("Predict future hourly energy consumption (PJME) using time series ML models")
+    
+    try:
+        # Model paths
+        model_dir = "Energy_Forecasting"
+        
+        # Load metadata from CSV results
+        univariate_results = pd.read_csv(f"{model_dir}/univariate_forecasting_results_summary.csv")
+        multivariate_results = pd.read_csv(f"{model_dir}/multivariate_forecasting_results_summary.csv")
+        multistep_results = pd.read_csv(f"{model_dir}/multistep_forecasting_results_summary.csv")
+        
+        st.success("✅ Models Ready: Univariate, Multivariate, Multi-Step Forecasting")
+        
+        # Info box about the dataset
+        st.info("""
+        **Dataset:** PJM Interconnection hourly energy consumption data  
+        **Target:** PJME (megawatthours) - PJM East region energy consumption  
+        **Frequency:** Hourly intervals  
+        **Period:** 2002-2018 (145,000+ hours)  
+        **Window Size:** 168 hours (1 week of historical data)
+        """)
+        
+        st.markdown("---")
+        
+        # User controls
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            forecast_type = st.selectbox(
+                "🎯 Forecast Type",
+                ["Univariate (PJME Only)", "Multivariate (PJME + Other Regions)", "Multi-Step (Next Day)"],
+                help="Univariate uses only historical PJME data. Multivariate includes other regional consumption. Multi-Step predicts next 24 hours.",
+                key="pjm_forecast_type"
+            )
+        
+        with col2:
+            if "Multivariate" in forecast_type:
+                st.info("**Fixed:** 1 step ahead (next hour)")
+                horizon = 1
+            elif "Multi-Step" in forecast_type:
+                st.info("**Fixed:** 24 steps ahead (next day)")
+                horizon = 24
+            else:  # Univariate
+                horizon_options = {
+                    "1 hour": 1,
+                    "6 hours": 6,
+                    "12 hours": 12,
+                    "24 hours (1 day)": 24,
+                    "168 hours (1 week)": 168
+                }
+                horizon_label = st.selectbox("⏰ Forecast Horizon", list(horizon_options.keys()), key="pjm_horizon")
+                horizon = horizon_options[horizon_label]
+        
+        st.markdown("---")
+        
+        # Load and display historical data
+        try:
+            df = pd.read_csv(r"c:\Users\LENOVO\Desktop\Ml forcasting\Forecasting\Forecasting\EnergyConsuption\pjm_hourly_est.csv")
+            df['Datetime'] = pd.to_datetime(df['Datetime'])
+            df = df.sort_values('Datetime')
+            df = df[df['PJME'].notnull()].copy()
+            
+            target_col = 'PJME'
+            
+            # Show last 200 observations (for context)
+            last_observations = df[target_col].tail(200).values
+            
+            st.markdown("### 📊 Recent Historical Data")
+            st.caption("Last 200 hours (~8 days of energy consumption)")
+            
+            fig_hist, ax_hist = plt.subplots(figsize=(12, 4))
+            ax_hist.plot(range(len(last_observations)), last_observations, label='Historical Consumption', color='darkgreen', linewidth=1.5)
+            ax_hist.set_xlabel('Hours')
+            ax_hist.set_ylabel('PJME (MWh)')
+            ax_hist.set_title('Recent PJM East Energy Consumption')
+            ax_hist.grid(True, alpha=0.3)
+            ax_hist.legend()
+            st.pyplot(fig_hist)
+            plt.close()
+            
+        except Exception as e:
+            st.warning(f"Could not load historical data: {str(e)}")
+        
+        st.markdown("---")
+        
+        # Handle Multivariate separately (doesn't need button inside button)
+        if "Multivariate" in forecast_type:
+            try:
+                with open(f"{model_dir}/pjm_energy_multivariate_best_model.pkl", 'rb') as f:
+                    model_dict = pickle.load(f)
+                
+                model = model_dict['model']
+                scaler = model_dict['scaler']
+                target_scaler = model_dict['target_scaler']
+                window_size = model_dict['window_size']
+                feature_columns = model_dict['feature_columns']
+                target_column = model_dict['target_column']
+                
+                # Build all_features in the SAME ORDER as training
+                # During training: df_model has all columns, scaler fit on df_model.values
+                # So we need to get columns in their original order from the dataframe
+                df_model = df.drop('Datetime', axis=1).dropna(axis=1, how='all').fillna(method='ffill').fillna(method='bfill')
+                all_features = df_model.columns.tolist()
+                target_idx = all_features.index(target_column)
+                
+                # Get best model info
+                best_multi = multivariate_results.loc[multivariate_results['r2'].idxmax()]
+                
+                st.success(f"✅ Using {best_multi['model']} (R²={best_multi['r2']:.4f}, Window={int(best_multi['window_size'])}h)")
+                
+                st.info("""
+                **True Multivariate Forecasting:** Uses **PJME history + other regional consumption data**  
+                **Input:** Last 168 hours of all regional energy data  
+                **Output:** Next PJME value (1 hour ahead)
+                """)
+                
+                st.markdown("---")
+                
+                if st.button("🔮 Predict Next Hour", type="primary", use_container_width=True, key="pjm_multi_predict"):
+                    
+                    st.markdown("### 📈 Multivariate Forecast Results")
+                    
+                    # Get historical window data - ALL features (target + feature_columns)
+                    df_model = df.drop('Datetime', axis=1).dropna(axis=1, how='all').fillna(method='ffill').fillna(method='bfill')
+                    last_window_data = df_model[all_features].tail(window_size).values
+                    
+                    # Scale the input using the feature scaler
+                    input_scaled = scaler.transform(last_window_data)
+                    X_input = input_scaled.flatten().reshape(1, -1)
+                    
+                    # Predict next step (returns scaled prediction)
+                    pred_scaled = model.predict(X_input)
+                    
+                    # Inverse transform using target_scaler
+                    prediction = target_scaler.inverse_transform(pred_scaled.reshape(-1, 1))[0, 0]
+                    
+                    st.success(f"✅ Next hour prediction: **{prediction:.2f} MWh**")
+                    
+                    # Display prediction
+                    col1, col2 = st.columns([2, 1])
+                    
+                    with col1:
+                        fig, ax = plt.subplots(figsize=(10, 5))
+                        
+                        # Historical
+                        hist_steps = 168
+                        hist_data = df[target_col].tail(hist_steps).values
+                        ax.plot(range(-hist_steps, 0), hist_data, 
+                               label='Historical (Last Week)', color='darkgreen', linewidth=2, marker='o', markersize=3)
+                        
+                        # Prediction
+                        ax.plot([0], [prediction], 
+                               label='Predicted (Next Hour)', color='orange', 
+                               marker='s', markersize=12, linestyle='none')
+                        
+                        ax.axvline(x=0, color='red', linestyle=':', alpha=0.5, label='Now')
+                        ax.set_xlabel('Hours')
+                        ax.set_ylabel('PJME (MWh)')
+                        ax.set_title('Multivariate Forecast - Next Hour')
+                        ax.grid(True, alpha=0.3)
+                        ax.legend()
+                        st.pyplot(fig)
+                        plt.close()
+                    
+                    with col2:
+                        st.markdown("**📊 Prediction Summary**")
+                        st.metric("Current (Last Hour)", f"{hist_data[-1]:.2f} MWh")
+                        change = prediction - hist_data[-1]
+                        st.metric("**Next Hour Forecast**", f"{prediction:.2f} MWh", delta=f"{change:+.2f} MWh")
+                        pct_change = (change / hist_data[-1]) * 100
+                        st.caption(f"Change: {pct_change:+.2f}%")
+                    
+                    st.info("""
+                    **Note:** Multivariate model predicts only **1 step ahead** (next hour).  
+                    Uses regional correlation patterns for improved accuracy.
+                    """)
+            
+            except Exception as e:
+                st.error(f"Error loading multivariate model: {str(e)}")
+                st.info("""
+                **Multivariate model may not be available.**
+                
+                Run training script:
+                ```bash
+                cd Energy_Forecasting
+                python multivariate_forecasting.py
+                ```
+                """)
+        
+        # Generate Forecast Button (for Univariate and Multi-Step only)
+        elif st.button("🔮 Generate Forecast", type="primary", use_container_width=True, key="pjm_forecast"):
+            
+            st.markdown("### 📈 Forecast Results")
+            
+            if "Univariate" in forecast_type:
+                # Load univariate model
+                try:
+                    with open(f"{model_dir}/pjm_energy_univariate_best_model.pkl", 'rb') as f:
+                        model_dict = pickle.load(f)
+                    
+                    model = model_dict['model']
+                    scaler = model_dict['scaler']
+                    window_size = model_dict['window_size']
+                    
+                    # Get best model info
+                    best_model = univariate_results.loc[univariate_results['r2'].idxmax()]
+                    
+                    st.success(f"✅ Using {best_model['model']} (R²={best_model['r2']:.4f}, Window={int(best_model['window_size'])}h)")
+                    
+                    # Simulate forecast (recursive prediction for multi-step)
+                    last_window = df[target_col].tail(window_size).values.reshape(-1, 1)
+                    last_window_scaled = scaler.transform(last_window)
+                    
+                    predictions = []
+                    current_window = last_window_scaled.flatten()
+                    
+                    for step in range(horizon):
+                        # Predict next step
+                        X_input = current_window.reshape(1, -1)
+                        pred_scaled = model.predict(X_input)
+                        pred_actual = scaler.inverse_transform(pred_scaled.reshape(-1, 1))[0, 0]
+                        predictions.append(pred_actual)
+                        
+                        # Update window for next prediction
+                        if step < horizon - 1:
+                            current_window = np.append(current_window[1:], pred_scaled)
+                    
+                    # Display forecast
+                    forecast_df = pd.DataFrame({
+                        'Hour': range(1, horizon + 1),
+                        'Predicted Consumption (MWh)': predictions
+                    })
+                    
+                    col1, col2 = st.columns([2, 1])
+                    
+                    with col1:
+                        # Plot forecast
+                        fig, ax = plt.subplots(figsize=(10, 5))
+                        
+                        # Historical
+                        hist_steps = min(168, len(last_observations))
+                        ax.plot(range(-hist_steps, 0), last_observations[-hist_steps:], 
+                               label='Historical', color='darkgreen', linewidth=2, marker='o', markersize=3)
+                        
+                        # Forecast
+                        ax.plot(range(0, horizon), predictions, 
+                               label='Forecast', color='orange', linewidth=2, marker='s', markersize=4, linestyle='--')
+                        
+                        ax.axvline(x=0, color='red', linestyle=':', alpha=0.5, label='Forecast Start')
+                        ax.set_xlabel('Hours')
+                        ax.set_ylabel('PJME (MWh)')
+                        ax.set_title(f'PJM Energy Forecast - Next {horizon} Hours')
+                        ax.grid(True, alpha=0.3)
+                        ax.legend()
+                        st.pyplot(fig)
+                        plt.close()
+                    
+                    with col2:
+                        st.markdown("**📋 Forecast Table**")
+                        st.dataframe(forecast_df.head(10), hide_index=True)
+                        if horizon > 10:
+                            st.caption(f"Showing first 10 of {horizon} hours")
+                    
+                    # Summary statistics
+                    st.markdown("### 📊 Forecast Summary")
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Average", f"{np.mean(predictions):.2f} MWh")
+                    with col2:
+                        st.metric("Peak", f"{np.max(predictions):.2f} MWh")
+                    with col3:
+                        st.metric("Minimum", f"{np.min(predictions):.2f} MWh")
+                    with col4:
+                        st.metric("Std Dev", f"{np.std(predictions):.2f} MWh")
+                    
+                except Exception as e:
+                    st.error(f"Error loading univariate model: {str(e)}")
+                    
+            else:  # Multi-Step
+                # Load multi-step model
+                try:
+                    with open(f"{model_dir}/pjm_energy_multistep_best_model.pkl", 'rb') as f:
+                        model_dict = pickle.load(f)
+                    
+                    model = model_dict['model']
+                    scaler = model_dict['scaler']
+                    window_size = model_dict['window_size']
+                    
+                    # Get best model info
+                    best_model = multistep_results.loc[multistep_results['r2'].idxmax()]
+                    
+                    st.success(f"✅ Using {best_model['model']} (Overall R²={best_model['r2']:.4f}, Window={int(best_model['window_size'])}h)")
+                    
+                    st.info("""
+                    **Multi-Step Model:** Predicts all 24 future hours **simultaneously** (not recursively)  
+                    **Direct Strategy:** One model input → 24 outputs [t+1h, t+2h, ..., t+24h]
+                    """)
+                    
+                    # Get last window
+                    last_window = df[target_col].tail(window_size).values.reshape(-1, 1)
+                    last_window_scaled = scaler.transform(last_window)
+                    X_input = last_window_scaled.flatten().reshape(1, -1)
+                    
+                    # Predict all 24 steps at once
+                    predictions_scaled = model.predict(X_input)  # Shape: (1, 24)
+                    
+                    # Reshape for inverse transform
+                    predictions_2d = predictions_scaled.reshape(-1, 1)
+                    predictions = scaler.inverse_transform(predictions_2d).flatten()
+                    
+                    # Display forecast
+                    st.markdown("### 🎯 Next Day Forecast (24 Hours)")
+                    
+                    forecast_df = pd.DataFrame({
+                        'Hour': range(1, 25),
+                        'Predicted Consumption (MWh)': predictions
+                    })
+                    
+                    col1, col2 = st.columns([2, 1])
+                    
+                    with col1:
+                        fig, ax = plt.subplots(figsize=(12, 6))
+                        
+                        # Historical
+                        hist_steps = 168
+                        hist_data = last_observations[-hist_steps:]
+                        ax.plot(range(-hist_steps, 0), hist_data, 
+                               label='Historical (Last Week)', color='darkgreen', 
+                               linewidth=2, marker='o', markersize=3, alpha=0.8)
+                        
+                        # Forecast
+                        ax.plot(range(0, 24), predictions, 
+                               label='Forecast (Next Day)', color='orange', 
+                               linewidth=2.5, marker='s', markersize=5, linestyle='--')
+                        
+                        ax.axvline(x=0, color='red', linestyle=':', linewidth=2, alpha=0.6, label='Now')
+                        ax.fill_between(range(0, 24), predictions, alpha=0.2, color='orange')
+                        
+                        ax.set_xlabel('Hours', fontsize=12, fontweight='bold')
+                        ax.set_ylabel('PJME (MWh)', fontsize=12, fontweight='bold')
+                        ax.set_title('PJM Energy Forecast - Next 24 Hours', 
+                                    fontsize=14, fontweight='bold')
+                        ax.grid(True, alpha=0.3, linestyle='--')
+                        ax.legend(fontsize=11, loc='best')
+                        
+                        st.pyplot(fig)
+                        plt.close()
+                    
+                    with col2:
+                        st.markdown("**📋 Hourly Forecast**")
+                        st.dataframe(forecast_df.head(12), hide_index=True)
+                        st.caption("Showing first 12 of 24 hours")
+                        
+                        # Trend indicator
+                        trend = "📈 Increasing" if predictions[-1] > predictions[0] else "📉 Decreasing"
+                        change = ((predictions[-1] - predictions[0]) / predictions[0]) * 100
+                        st.metric("Trend (Hour 1 → 24)", trend, f"{change:+.2f}%")
+                    
+                    # Detailed statistics
+                    st.markdown("### 📊 Detailed Forecast Analysis")
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Average", f"{np.mean(predictions):.2f} MWh")
+                    with col2:
+                        st.metric("Peak Demand", f"{np.max(predictions):.2f} MWh")
+                    with col3:
+                        st.metric("Lowest Demand", f"{np.min(predictions):.2f} MWh")
+                    with col4:
+                        st.metric("Variability", f"{np.std(predictions):.2f} MWh")
+                    
+                except Exception as e:
+                    st.error(f"Error loading multi-step model: {str(e)}")
+        
+        # Model Performance Section (Always Visible) - Only Best Models
+        st.markdown("---")
+        st.markdown("### 📊 Best Model Performance Summary")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("#### 🔵 Univariate")
+            st.caption("1-step ahead, PJME only")
+            best_uni = univariate_results.loc[univariate_results['r2'].idxmax()]
+            st.success(f"**{best_uni['model']}**")
+            st.metric("R² Score", f"{best_uni['r2']:.4f}")
+            st.metric("RMSE", f"{best_uni['rmse']:.2f} MWh")
+            st.metric("Window", f"{int(best_uni['window_size'])} hours")
+        
+        with col2:
+            st.markdown("#### 🟢 Multivariate")
+            st.caption("1-step ahead, all regions")
+            best_multi = multivariate_results.loc[multivariate_results['r2'].idxmax()]
+            st.success(f"**{best_multi['model']}**")
+            st.metric("R² Score", f"{best_multi['r2']:.4f}")
+            st.metric("RMSE", f"{best_multi['rmse']:.2f} MWh")
+            st.metric("Window", f"{int(best_multi['window_size'])} hours")
+        
+        with col3:
+            st.markdown("#### 🟠 Multi-Step")
+            st.caption("24-hour direct forecast")
+            best_multistep = multistep_results.loc[multistep_results['r2'].idxmax()]
+            st.success(f"**{best_multistep['model']}**")
+            st.metric("Overall R²", f"{best_multistep['r2']:.4f}")
+            st.metric("Overall RMSE", f"{best_multistep['rmse']:.2f} MWh")
+            st.metric("Window", f"{int(best_multistep['window_size'])} hours")
+        
+        # Technical details
+        with st.expander("ℹ️ Technical Details & Dataset Information"):
+            st.markdown("""
+            **Dataset Information:**
+            - **Source:** PJM Interconnection (Regional Transmission Organization)
+            - **Target Variable:** PJME - PJM East region hourly energy consumption
+            - **Units:** Megawatthours (MWh)
+            - **Time Period:** 2002-2018
+            - **Total Records:** 145,366 hourly observations
+            - **Other Regions Available:** AEP, COMED, DAYTON, DEOK, DOM, DUQ, EKPC, FE, NI, PJMW
+            
+            **Forecasting Approaches:**
+            - **Univariate:** Uses only historical PJME values (recursive for multi-step)
+            - **Multivariate:** Incorporates other regional consumption patterns (correlation-based)
+            - **Multi-Step:** Direct 24-hour ahead prediction (all steps simultaneously)
+            
+            **Window Sizes Tested:**
+            - 24 hours (1 day)
+            - 168 hours (1 week) - **Best performance**
+            
+            **Models Evaluated:**
+            - Linear Regression (baseline)
+            - Ridge Regression (L2 regularization, best performer)
+            - Random Forest (ensemble, non-linear)
+            - XGBoost (gradient boosting)
+            
+            **Key Findings:**
+            - 168-hour window consistently outperformed 24-hour window
+            - Ridge Regression achieved R² > 0.998 (univariate, 168h window)
+            - Multivariate models benefit from regional correlation patterns
+            - Multi-step direct strategy more stable than recursive for 24h forecasts
+            
+            **Production Notes:**
+            - Real-time prediction requires 1 week of historical data
+            - Models handle weekly seasonality patterns effectively
+            - Suitable for day-ahead energy market forecasting
+            """)
+    
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
+        st.info("""
+        **To use PJM Energy Forecasting:**
+        
+        Ensure the following files exist in `Energy_Forecasting/`:
+        - Model pickle files
+        - Result CSV files
+        - Dataset: `pjm_hourly_est.csv`
+        """)
+
+# ============================================================================
+# PREDICTION SECTION 8: WEATHER CLASSIFICATION (FALLBACK)
 # ============================================================================
 
 else:  # Weather Classification

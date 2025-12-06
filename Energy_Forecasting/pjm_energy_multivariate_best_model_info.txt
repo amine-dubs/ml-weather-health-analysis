@@ -1,0 +1,48 @@
+================================================================================
+BEST MULTIVARIATE MODEL INFORMATION
+================================================================================
+
+Model Type: Ridge Regression
+Window Size: 168 hours
+Target Variable: PJME
+Features: AEP, COMED, DAYTON, DEOK, DOM, DUQ, EKPC, FE, NI, PJMW
+
+Performance Metrics:
+  - RMSE: 266.6908
+  - MAE: 194.9319
+  - R² Score: 0.9983
+  - MAPE: 0.6259%
+
+================================================================================
+HOW TO USE THE SAVED MODEL
+================================================================================
+
+import pickle
+import numpy as np
+
+# Load the model
+with open('pjm_energy_multivariate_best_model.pkl', 'rb') as f:
+    model_dict = pickle.load(f)
+
+model = model_dict['model']
+scaler = model_dict['scaler']
+target_scaler = model_dict['target_scaler']
+window_size = model_dict['window_size']  # 168
+feature_columns = model_dict['feature_columns']
+
+# Prepare your input data (last 'window_size' time steps, all features)
+# input_data should be a numpy array of shape (window_size, n_features)
+input_data = your_data[-window_size:]
+
+# Scale the input
+input_scaled = scaler.transform(input_data)
+
+# Flatten for prediction
+input_flat = input_scaled.flatten().reshape(1, -1)
+
+# Make prediction
+prediction_scaled = model.predict(input_flat)
+
+# Inverse transform to get actual value
+prediction = target_scaler.inverse_transform(np.array(prediction_scaled).reshape(-1, 1))
+print(f'Predicted PJME: {prediction[0][0]:.2f}')
