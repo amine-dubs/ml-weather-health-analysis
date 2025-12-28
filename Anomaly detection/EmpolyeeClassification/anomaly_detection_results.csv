@@ -1,0 +1,6 @@
+,accuracy,precision,recall,f1_score,train_anomalies,test_anomalies
+Isolation Forest,0.4588,0.3839,0.2426,0.2973,17880.0,4444.0
+One-Class SVM,0.4795,0.4182,0.2634,0.3232,17886.0,4428.0
+Local Outlier Factor,0.4825,0.4277,0.2856,0.3425,16414.0,4695.0
+Elliptic Envelope,0.4896,0.4357,0.2763,0.3382,17880.0,4459.0
+DBSCAN,0.4468,0.4288,0.5185,0.4694,15622.0,8502.0
