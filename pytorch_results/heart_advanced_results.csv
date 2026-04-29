@@ -1,0 +1,7 @@
+config,description,model_type,loss,optimizer,weight_decay,scheduler,val_auc,test_auc,test_acc,test_f1,epochs,time_s
+adv_weighted_bce,BCELoss with pos_weight (handles class imbalance),flexmlp,weighted_bce,adamw,0.01,none,0.958251,0.930981,0.869748,0.882129,56,5.9
+adv_wider,Wider network (512x256x128) + AdamW,flexmlp,default,adamw,0.01,none,0.956656,0.947137,0.882353,0.884298,79,13.0
+adv_residual,"ResidualMLP (hidden=256, 3 blocks) + AdamW",residual,default,adamw,0.01,none,0.954455,0.935162,0.87395,0.880952,50,17.1
+adv_residual_wide,"ResidualMLP (hidden=512, 4 blocks) + AdamW",residual,default,adamw,0.01,none,0.955226,0.951672,0.903361,0.911197,49,45.2
+adv_warmup_cosine,AdamW + linear warmup (5 ep) + cosine decay,flexmlp,default,adamw,0.01,warmup_cosine,0.955446,0.935693,0.894958,0.900398,55,5.4
+adv_best_combo,"ResidualMLP (512, 4) + weighted BCE + AdamW + cosine",residual,weighted_bce,adamw,0.01,cosine,0.95209,0.942354,0.894958,0.901186,60,56.7

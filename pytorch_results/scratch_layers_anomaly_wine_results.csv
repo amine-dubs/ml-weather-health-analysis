@@ -1,0 +1,2 @@
+val_metric,test_metric,test_acc,test_f1,epochs_run,time_s,config,description
+0.9964026626275512,0.9991549744897957,0.9961538461538462,0.9922239502332815,47,55.355228662490845,scratch_novel_feature_cross_128x2,Custom Gate/Cross novel scratch architecture

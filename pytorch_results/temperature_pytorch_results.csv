@@ -1,0 +1,11 @@
+config,description,dropout,batch_norm,optimizer,weight_decay,scheduler,val_r2_subsample,val_r2_full,test_r2,test_mae,test_rmse,epochs,time_s
+pt_baseline,"Baseline — mirrors sklearn best (Adam, wd=1e-4, no dropout/BN)",0.0,False,adam,0.0001,none,0.720481,0.741273,0.747962,3.7641,4.8195,74,156.1
+pt_dropout_02,Dropout=0.2 (light regularisation),0.2,False,adam,0.0001,none,0.705254,0.733876,0.738435,3.8638,4.9098,80,183.9
+pt_dropout_04,Dropout=0.4 (heavy regularisation),0.4,False,adam,0.0001,none,0.624544,0.714003,0.717495,4.0584,5.1025,55,124.5
+pt_batchnorm,BatchNorm1d only (no dropout),0.0,True,adam,0.0001,none,0.71553,0.741481,0.747462,3.7685,4.8243,80,192.4
+pt_bn_dropout,BatchNorm + Dropout=0.2 (standard modern combo),0.2,True,adam,0.0001,none,0.717825,0.737106,0.742322,3.8381,4.8731,80,213.6
+pt_adamw,AdamW with weight_decay=0.01 (decoupled L2),0.0,False,adamw,0.01,none,0.72023,0.741738,0.748625,3.7739,4.8132,77,169.7
+pt_sgd_momentum,SGD + Nesterov momentum=0.9,0.0,False,sgd,0.0001,none,0.721103,0.73857,0.743962,3.8226,4.8576,55,116.6
+pt_scheduler_plateau,"Adam + ReduceLROnPlateau (factor=0.5, patience=5)",0.0,False,adam,0.0001,plateau,0.723649,0.741783,0.747974,3.7756,4.8194,80,193.7
+pt_scheduler_cosine,"Adam + CosineAnnealingLR (T_max=max_epochs, eta_min=1e-5)",0.0,False,adam,0.0001,cosine,0.720972,0.741365,0.746984,3.7774,4.8288,80,162.6
+pt_full_modern,BN + Dropout=0.2 + AdamW(wd=0.01) + CosineAnnealingLR,0.2,True,adamw,0.01,cosine,0.711933,0.732622,0.738491,3.8751,4.9092,80,192.3

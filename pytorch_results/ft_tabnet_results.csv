@@ -1,0 +1,4 @@
+task,model,metric,value
+Dataset2.csv,FTTransformer,roc_auc,0.909155328798186
+Dataset2.csv,TabNet,roc_auc,0.9343112244897958
+Dataset1.csv,FTTransformer,r2,0.4817320704460144

@@ -1,0 +1,11 @@
+task,metric,ml_model,ml_value,dnn_model,dnn_value,delta_dnn_minus_ml,winner
+heart_classification,roc_auc,StackingClassifier,0.9783871882086168,"MLP(256x128,relu,a=0.0001,lr=0.01)",0.9416099773242632,-0.0367772108843537,ML
+covid_classification,auc_roc,Stacking (LR),0.8974681866383881,"MLP(128x64,relu,a=0.0001,lr=0.01)",0.9009146341463414,0.0034464475079533,DNN
+temperature_regression,r2,Stacking,0.7766451114399587,"MLP(256x128x64,relu,a=0.0001,lr=0.001)",0.7439232741635364,-0.0327218372764223,ML
+multi_output_regression,avg_r2,XGBoost_MultiOutput,0.9282,"MLP(128x64x32,relu,a=0.0001,lr=0.001)",0.4664553105831146,-0.4617446894168854,ML
+wind_forecasting,r2,Ridge Regression,0.9713637068704136,"MLP(256x128,relu,a=0.0001,lr=0.01)",0.9706014974248086,-0.000762209445605,ML
+energy_forecasting,r2,Linear Regression,0.998542238271129,"MLP(256x128,relu,a=0.0001,lr=0.001)",0.9976940152198336,-0.0008482230512952,ML
+anomaly_employee,f1,DBSCAN,0.4694,"MLP(256x128,relu,a=0.001,lr=0.001)",0.7423043095866315,0.2729043095866315,DNN
+anomaly_heart,balanced_acc,Elliptic Envelope,0.664,"MLP(64,relu,a=0.0001,lr=0.001)",0.7710798816410704,0.1070798816410704,DNN
+anomaly_wine,f1,Elliptic Envelope,0.9188,"MLP(128x64x32,relu,a=0.0001,lr=0.001)",0.9937369519832986,0.0749369519832986,DNN
+weather_classification,auc_score,Random Forest_NoNorm,0.8492850598383219,"MLP(128x64,relu,a=0.001,lr=0.001)",0.6406830585591832,-0.20860200127913875,ML

@@ -1,0 +1,7 @@
+config,description,model_type,loss,optimizer,weight_decay,scheduler,val_r2_subsample,val_r2_full,test_r2,test_mae,test_rmse,epochs,time_s
+adv_huber,SmoothL1 (Huber) loss -- robust to outliers,flexmlp,huber,adamw,0.01,none,0.708933,0.732012,0.738325,3.7833,4.9108,58,117.3
+adv_wider,Wider network (512x256x128x64) + AdamW,flexmlp,default,adamw,0.01,none,0.71814,0.739151,0.74626,3.7896,4.8358,46,140.8
+adv_residual,"ResidualMLP (hidden=256, 4 blocks) + AdamW",residual,default,adamw,0.01,none,0.712703,0.741741,0.74929,3.7376,4.8068,48,264.7
+adv_residual_wide,"ResidualMLP (hidden=512, 4 blocks) + AdamW",residual,default,adamw,0.01,none,0.713439,0.744296,0.752036,3.6974,4.7804,54,704.0
+adv_warmup_cosine,AdamW + linear warmup (5 ep) + cosine decay,flexmlp,default,adamw,0.01,warmup_cosine,0.718926,0.73856,0.744506,3.7975,4.8524,80,160.8
+adv_best_combo,"ResidualMLP (512, 4) + Huber loss + AdamW + cosine",residual,huber,adamw,0.01,cosine,0.709038,0.73863,0.748703,3.6503,4.8124,58,763.8

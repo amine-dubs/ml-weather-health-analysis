@@ -1,0 +1,11 @@
+task,preprocessing_match,preprocessing_notes
+heart_classification,exact,StandardScaler + stratify split – identical to ML best.
+covid_classification,exact,KNNImputer(k=5) + StandardScaler + stratify split – identical to ML best.
+temperature_regression,exact,"Drop 3 cols, NaN-preserving LabelEncode, KNNImputer(5), StandardScaler – identical to ML."
+multi_output_regression,exact,Joint KNN imputation on X+y – identical to ML.
+weather_classification,exact,"Same 31 engineered features, distribution_sampling imputation, no scaling."
+wind_forecasting,exact,"MinMax scaling, chronological split, window=24."
+energy_forecasting,exact,"MinMax scaling, chronological split, window=24."
+anomaly_employee,exact,"Same train/test files, label encoding + StandardScaler."
+anomaly_heart,exact,Same anomaly framing and reduced-positive-class imbalance.
+anomaly_wine,exact,Same separate-class anomaly setup + StandardScaler.

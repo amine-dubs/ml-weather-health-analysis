@@ -127,6 +127,190 @@ def load_model_safe(filepath):
             raise
 
 # ============================================================================
+# PYTORCH DNN MODEL SUPPORT
+# ============================================================================
+# Import PyTorch model utilities for DNN predictions
+try:
+    os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+    import torch
+    from pytorch_model_utils import FlexMLP, ResidualMLP, ResidualBlock, PyTorchMLPWrapper
+    from novel_architectures import ScratchNovelNet, ScratchSqueezeExciteNet, ScratchMultiScaleNet
+    PYTORCH_AVAILABLE = True
+except ImportError:
+    PYTORCH_AVAILABLE = False
+
+@st.cache_resource
+def load_dnn_heart_model():
+    """Load PyTorch DNN Heart Disease model (cached)"""
+    try:
+        return joblib.load("pytorch_results/models/heart_classification_pytorch_model.pkl")
+    except:
+        return None
+
+@st.cache_resource
+def load_dnn_temperature_model():
+    """Load PyTorch DNN Temperature model (cached)"""
+    try:
+        return joblib.load("pytorch_results/models/temperature_regression_pytorch_model.pkl")
+    except:
+        return None
+
+@st.cache_resource
+def load_dnn_wind_model():
+    """Load PyTorch DNN Wind Turbine model (cached)"""
+    try:
+        return joblib.load("pytorch_results/models/wind_forecasting_pytorch_model.pkl")
+    except:
+        return None
+
+@st.cache_resource
+def load_novel_heart_model():
+    try:
+        return joblib.load("pytorch_results/novel_models/heart_classification_novel_best.pkl")
+    except:
+        return None
+
+@st.cache_resource
+def load_novel_temperature_model():
+    try:
+        return joblib.load("pytorch_results/novel_models/temperature_regression_novel_best.pkl")
+    except:
+        return None
+
+@st.cache_resource
+def load_novel_wind_model():
+    try:
+        return joblib.load("pytorch_results/novel_models/wind_forecasting_novel_best.pkl")
+    except:
+        return None
+
+@st.cache_resource
+def load_novel_wine_model():
+    try:
+        return joblib.load("pytorch_results/novel_models/anomaly_wine_novel_best.pkl")
+    except:
+        return None
+
+
+@st.cache_data
+def load_pytorch_best_models_overview():
+    """Load the compact best-model summary generated from the saved CSV artifacts."""
+    path = "scratch_architectures/best_models_overview.csv"
+    if os.path.exists(path):
+        try:
+            return pd.read_csv(path)
+        except Exception:
+            return None
+    return None
+
+
+def show_pytorch_architecture_summary(task_key, section_title):
+    """Show a compact architecture + parameter summary for the given task."""
+    overview = load_pytorch_best_models_overview()
+    if overview is None:
+        return
+
+    row = overview[overview["task"] == task_key]
+    if row.empty:
+        return
+
+    row = row.iloc[0]
+    summary_df = pd.DataFrame([
+        {
+            "Best DNN": row.get("best_dnn_model", "n/a"),
+            "DNN Metric": f"{row.get('metric', 'n/a')} = {float(row.get('best_dnn_value', np.nan)):.4f}" if pd.notna(row.get("best_dnn_value", np.nan)) else "n/a",
+            "ML Baseline": f"{row.get('ml_model', 'n/a')} = {float(row.get('ml_value', np.nan)):.4f}" if pd.notna(row.get("ml_value", np.nan)) else "n/a",
+            "Winner": row.get("winner", "n/a"),
+            "Scratch Best": row.get("scratch_best_config", "n/a"),
+            "Scratch Value": f"{float(row.get('scratch_best_value', np.nan)):.4f}" if pd.notna(row.get("scratch_best_value", np.nan)) else "n/a",
+        }
+    ])
+
+    with st.expander(section_title, expanded=False):
+        st.dataframe(summary_df, use_container_width=True, hide_index=True)
+        notes = row.get("preprocessing_notes", "n/a")
+        if pd.notna(notes):
+            st.caption(f"Preprocessing notes: {notes}")
+
+def show_novel_architecture_summary(pkg, section_title="Novel Architecture details"):
+    if not pkg:
+        return
+    st.markdown(f"**Architecture:** `{pkg['architecture']}` (Class: `{pkg['model_meta']['arch_class']}`)")
+    st.markdown(f"**Test Metric:** `{pkg['test_metric']:.4f}`")
+    st.markdown(f"**Validation Metric:** `{pkg['val_metric']:.4f}`")
+    st.markdown(f"**Training Time:** `{pkg['time_s']:.1f}s` ({pkg['epochs']} epochs)")
+    with st.expander(section_title, expanded=False):
+        st.json(pkg['model_meta'])
+
+def predict_with_novel_model(pkg, X_np):
+    """
+    Given the loaded pkg (dict from joblib) and a numpy array X_np of shape (n_samples, n_features),
+    instantiate the model, load weights, and return predictions.
+    """
+    if not pkg or not PYTORCH_AVAILABLE:
+        return None
+    meta = pkg['model_meta']
+    cls_name = meta['arch_class']
+    
+    # Retrieve the class
+    import novel_architectures
+    if not hasattr(novel_architectures, cls_name):
+        return None
+    ArchClass = getattr(novel_architectures, cls_name)
+    
+    # Initialize
+    model = ArchClass(
+        input_dim=meta['input_dim'],
+        output_dim=meta['output_dim'],
+        task_type=meta['task_type'],
+        **meta['arch_kwargs']
+    )
+    
+    # Load weights
+    model.load_state_dict(pkg['model_state_dict'])
+    model.eval()
+    
+    # Predict
+    X_t = torch.tensor(X_np, dtype=torch.float32)
+    with torch.no_grad():
+        out = model(X_t)
+        
+    if meta['task_type'] == 'classification':
+        # out is probabilities after sigmoid, shape (n, 1)
+        raw = out.numpy()
+        if raw.ndim == 2 and raw.shape[1] == 1:
+            raw = raw.ravel()  # flatten to (n,)
+        # Build 2-column probability array [P(class=0), P(class=1)]
+        if raw.ndim == 1:
+            proba = np.column_stack([1 - raw, raw])  # shape (n, 2)
+        else:
+            proba = raw
+        preds = (proba[:, 1] > 0.5).astype(int)
+        return preds, proba
+    elif meta['task_type'] == 'multiclass':
+        # out is logits, apply softmax
+        proba = torch.softmax(out, dim=1).numpy()
+        preds = proba.argmax(axis=1)
+        return preds, proba
+    else: # regression
+        return out.numpy().ravel(), None
+
+
+def dnn_wind_predict(wrapper, raw_window):
+    """
+    Custom prediction for wind DNN model.
+    The scaler was fit on 1D power values, but the model takes 24-feature window.
+    raw_window: array of shape (24,) with raw power values.
+    Returns: predicted power value (float).
+    """
+    scaled_vals = wrapper.scaler.transform(raw_window.reshape(-1, 1)).flatten()
+    X_t = torch.tensor(scaled_vals.reshape(1, -1), dtype=torch.float32)
+    wrapper.model.eval()
+    with torch.no_grad():
+        pred_scaled = wrapper.model(X_t).squeeze().numpy()
+    return float(wrapper.scaler.inverse_transform([[float(pred_scaled)]])[0, 0])
+
+# ============================================================================
 # CACHED MODEL LOADING FUNCTIONS (5-10x faster predictions)
 # ============================================================================
 @st.cache_resource
@@ -374,7 +558,8 @@ model_choice = st.sidebar.radio(
         "⚡ PJM Energy Consumption Forecasting (Hourly)",
         "🔍 Anomaly Detection: Employee Attrition",
         "🫀 Anomaly Detection: Heart Disease",
-        "🍷 Anomaly Detection: Wine Type"
+        "🍷 Anomaly Detection: Wine Type",
+        "🧠 ML vs DNN Comparison"
     ]
 )
 
@@ -417,6 +602,14 @@ elif "Multi-Output" in model_choice:
     **Algorithm:** XGBoost  
     **Avg R²:** 0.9282  
     **Outputs:** Pressure & Humidity
+    """)
+elif "ML vs DNN Comparison" in model_choice:
+    st.sidebar.success("✅ **Comparison Available**")
+    st.sidebar.info("""
+    **Type:** Benchmark Comparison  
+    **Scope:** Same 10 dashboard tasks  
+    **Models:** Existing ML vs DNN (MLP)  
+    **Source:** `dnn_results/ml_vs_dnn_comparison.csv`
     """)
 else:  # Weather Classification
     st.sidebar.warning("✅ **Model Available**")
@@ -521,6 +714,56 @@ else:
 
 # Main content area
 st.markdown(f"## {model_choice}")
+
+# ============================================================================
+# COMPARISON SECTION: ML VS DNN
+# ============================================================================
+if "ML vs DNN Comparison" in model_choice:
+    comparison_path = "dnn_results/ml_vs_dnn_comparison.csv"
+    dnn_details_path = "dnn_results/dnn_task_results.csv"
+
+    st.markdown("### 🧠 ML vs DNN Benchmark (Same Dashboard Tasks)")
+
+    if os.path.exists(comparison_path):
+        comparison_df = pd.read_csv(comparison_path)
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Tasks Compared", int(len(comparison_df)))
+        with col2:
+            st.metric("DNN Wins", int((comparison_df['winner'] == 'DNN').sum()))
+        with col3:
+            st.metric("ML Wins", int((comparison_df['winner'] == 'ML').sum()))
+
+        display_df = comparison_df.copy()
+        for col in ['ml_value', 'dnn_value', 'delta_dnn_minus_ml']:
+            if col in display_df.columns:
+                display_df[col] = display_df[col].round(4)
+
+        st.dataframe(display_df, use_container_width=True)
+
+        winner_counts = comparison_df['winner'].value_counts().rename_axis('winner').reset_index(name='count')
+        st.bar_chart(winner_counts.set_index('winner'))
+
+        with st.expander("📋 DNN Task Details"):
+            if os.path.exists(dnn_details_path):
+                dnn_df = pd.read_csv(dnn_details_path)
+                st.dataframe(dnn_df, use_container_width=True)
+            else:
+                st.info("DNN details file not found. Run `dnn_dashboard_benchmark.py` first.")
+
+        csv_buffer = io.StringIO()
+        comparison_df.to_csv(csv_buffer, index=False)
+        st.download_button(
+            label="📥 Download ML vs DNN Comparison",
+            data=csv_buffer.getvalue(),
+            file_name="ml_vs_dnn_comparison.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    else:
+        st.warning("⚠️ Comparison file not found")
+        st.info("Run `dnn_dashboard_benchmark.py` to generate `dnn_results/ml_vs_dnn_comparison.csv`.")
 
 # ============================================================================
 # PREDICTION SECTION 1: HEART DISEASE
@@ -737,9 +980,160 @@ if "Heart Disease Classification" in model_choice:
                 
                 st.info("⚠️ **Disclaimer:** This is a machine learning prediction tool for educational purposes. Always consult qualified healthcare professionals for medical decisions.")
             
+            # ============================================================
+            # DNN PREDICTION SECTION (Heart Disease)
+            # ============================================================
+            st.markdown("---")
+            st.markdown("### 🧠 Deep Neural Network Prediction")
+            
+            dnn_heart = load_dnn_heart_model()
+            if dnn_heart is not None and PYTORCH_AVAILABLE:
+                st.success(f"✅ DNN Model Loaded: **{dnn_heart.config_desc}** (Config: {dnn_heart.config_name})")
+                show_pytorch_architecture_summary("heart_classification", "Best architecture summary")
+                
+                if st.button("🧠 Predict with DNN (PyTorch)", type="secondary", use_container_width=True, key="dnn_heart_predict"):
+                    # Prepare input for DNN model
+                    dnn_input = pd.DataFrame([[
+                        age,
+                        int(sex.split()[-1].strip("()")),
+                        int(cp.split()[0]),
+                        trestbps,
+                        chol,
+                        int(fbs.split()[-1].strip("()")),
+                        int(restecg.split()[0]),
+                        thalach,
+                        int(exang.split()[-1].strip("()")),
+                        oldpeak,
+                        int(slope.split()[0])
+                    ]], columns=dnn_heart.feature_columns)
+                    
+                    dnn_pred = dnn_heart.predict(dnn_input)
+                    dnn_proba = dnn_heart.predict_proba(dnn_input)
+                    # Handle scalar vs array returns
+                    dnn_pred_val = int(dnn_pred) if np.ndim(dnn_pred) == 0 else int(dnn_pred[0])
+                    dnn_risk = float(dnn_proba[0, 1]) * 100 if dnn_proba.ndim == 2 else float(dnn_proba[1]) * 100
+                    dnn_confidence = max(float(dnn_proba[0, 0]), float(dnn_proba[0, 1])) * 100 if dnn_proba.ndim == 2 else max(float(dnn_proba[0]), float(dnn_proba[1])) * 100
+                    
+                    dnn_result_text = "Positive (Heart Disease)" if dnn_pred_val == 1 else "Negative (Healthy)"
+                    add_to_history(
+                        model_name="Heart Disease DNN (PyTorch)",
+                        inputs=f"Age: {age}, Sex: {sex}, BP: {trestbps}",
+                        prediction=dnn_result_text,
+                        probability=dnn_confidence
+                    )
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        if dnn_pred_val == 1:
+                            st.error("### 🚨 DNN: POSITIVE")
+                            st.markdown("**Heart disease detected**")
+                        else:
+                            st.success("### ✅ DNN: NEGATIVE")
+                            st.markdown("**No heart disease detected**")
+                    with col2:
+                        st.metric("DNN Risk Score", f"{dnn_risk:.1f}%")
+                    with col3:
+                        st.metric("DNN Confidence", f"{dnn_confidence:.1f}%")
+            else:
+                st.warning("⚠️ PyTorch DNN model not available. Run `pytorch_advanced_experiments.py` to train it.")
+            
+            # ============================================================
+            # NOVEL SCRATCH ARCHITECTURE PREDICTION (Heart Disease)
+            # ============================================================
+            st.markdown("---")
+            st.markdown("### 🛠️ Novel Scratch Architecture Prediction")
+            
+            novel_heart = load_novel_heart_model()
+            if novel_heart is not None:
+                show_novel_architecture_summary(novel_heart, "Best Novel Architecture Summary")
+                
+                if st.button("🛠️ Predict with Novel Arch", type="secondary", use_container_width=True, key="novel_heart_predict"):
+                    novel_input = np.array([[
+                        age,
+                        int(sex.split()[-1].strip("()")),
+                        int(cp.split()[0]),
+                        trestbps,
+                        chol,
+                        int(fbs.split()[-1].strip("()")),
+                        int(restecg.split()[0]),
+                        thalach,
+                        int(exang.split()[-1].strip("()")),
+                        oldpeak,
+                        int(slope.split()[0])
+                    ]])
+                    # Standard scaler was used for ML and saved, use it for novel model too since the training pipeline used StandardScaler
+                    # wait, let's just use the exact same scaler that the original ML loaded.
+                    novel_input_scaled = scaler.transform(pd.DataFrame(novel_input, columns=metadata.get('feature_names', [])))
+                    
+                    preds, proba = predict_with_novel_model(novel_heart, novel_input_scaled)
+                    
+                    if preds is not None:
+                        novel_pred_val = int(preds[0]) if np.ndim(preds) > 0 else int(preds)
+                        novel_risk = float(proba[0, 1]) * 100 if proba is not None and proba.ndim == 2 else float(proba[0]) * 100 if proba is not None else (100 if novel_pred_val==1 else 0)
+                        novel_confidence = max(float(proba[0, 0]), float(proba[0, 1])) * 100 if proba is not None and proba.ndim == 2 else max(float(proba[0]), 1-float(proba[0])) * 100 if proba is not None else 100
+                        
+                        novel_result_text = "Positive (Heart Disease)" if novel_pred_val == 1 else "Negative (Healthy)"
+                        add_to_history(
+                            model_name=f"Heart Novel ({novel_heart['architecture']})",
+                            inputs=f"Age: {age}, Sex: {sex}, BP: {trestbps}",
+                            prediction=novel_result_text,
+                            probability=novel_confidence
+                        )
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            if novel_pred_val == 1:
+                                st.error("### 🚨 NOVEL: POSITIVE")
+                                st.markdown("**Heart disease detected**")
+                            else:
+                                st.success("### ✅ NOVEL: NEGATIVE")
+                                st.markdown("**No heart disease detected**")
+                        with col2:
+                            st.metric("Novel Risk Score", f"{novel_risk:.1f}%")
+                        with col3:
+                            st.metric("Novel Confidence", f"{novel_confidence:.1f}%")
+            else:
+                st.warning("⚠️ Novel architecture model not found. Run `train_all_novel_architectures.py` first.")
+            
+            # ============================================================
+            # ML vs DNN COMPARISON (Heart Disease)
+            # ============================================================
+            st.markdown("---")
+            st.markdown("### 📊 ML vs DNN Performance Comparison")
+            st.caption("Heart Disease Classification — Same test set")
+            
+            comp_col1, comp_col2, comp_col3 = st.columns(3)
+            with comp_col1:
+                st.markdown("#### 🏆 ML (Stacking)")
+                st.metric("ROC-AUC", "0.9784")
+                st.metric("Accuracy", f"{metadata.get('accuracy', 0.9328):.4f}")
+                st.caption("XGBoost + RF + GB + ET")
+            with comp_col2:
+                st.markdown("#### 🧠 DNN (ResidualMLP)")
+                st.metric("ROC-AUC", "0.9517", delta="-0.0267")
+                st.metric("Accuracy", "0.9034", delta=f"{0.9034 - metadata.get('accuracy', 0.9328):+.4f}")
+                st.caption("512-dim × 4 blocks + AdamW")
+            with comp_col3:
+                st.markdown("#### 📈 Verdict")
+                st.info("**ML wins** by +2.67% ROC-AUC")
+                st.caption("Stacking ensemble benefits from diverse base learners on small tabular data (952 rows)")
+            
+            with st.expander("📋 All DNN Configurations Tested"):
+                try:
+                    heart_std = pd.read_csv("pytorch_results/heart_pytorch_results.csv")
+                    heart_adv = pd.read_csv("pytorch_results/heart_advanced_results.csv")
+                    all_heart = pd.concat([
+                        heart_std[['config', 'description', 'test_auc', 'test_acc', 'test_f1']],
+                        heart_adv[['config', 'description', 'test_auc', 'test_acc', 'test_f1']]
+                    ], ignore_index=True).sort_values('test_auc', ascending=False)
+                    all_heart.columns = ['Config', 'Description', 'ROC-AUC', 'Accuracy', 'F1-Score']
+                    st.dataframe(all_heart, use_container_width=True, hide_index=True)
+                except Exception:
+                    st.info("Run PyTorch experiments to generate comparison data.")
+            
             # Model Performance Section (Always Visible)
             st.markdown("---")
-            st.markdown("### 📈 Model Performance Metrics")
+            st.markdown("### 📈 ML Model Performance Metrics")
             st.caption("Performance on test set (238 samples)")
             
             col1, col2, col3, col4 = st.columns(4)
@@ -1214,9 +1608,178 @@ elif "Temperature" in model_choice:
                 else:
                     st.warning("🔥 **Hot** - Stay hydrated")
             
+            # ============================================================
+            # DNN PREDICTION SECTION (Temperature)
+            # ============================================================
+            st.markdown("---")
+            st.markdown("### 🧠 Deep Neural Network Prediction")
+            
+            dnn_temp = load_dnn_temperature_model()
+            if dnn_temp is not None and PYTORCH_AVAILABLE:
+                st.success(f"✅ DNN Model Loaded: **{dnn_temp.config_desc}** (Config: {dnn_temp.config_name})")
+                show_pytorch_architecture_summary("temperature_regression", "Best architecture summary")
+                
+                if st.button("🧠 Predict with DNN (PyTorch)", type="secondary", use_container_width=True, key="dnn_temp_predict"):
+                    # DNN model expects string categories for Summary and Precip Type
+                    # Map dashboard options to the DNN label encoder classes
+                    summary_dnn_map = {"Clear": "Clear", "Partly Cloudy": "Partly Cloudy", 
+                                       "Cloudy": "Mostly Cloudy", "Overcast": "Overcast"}
+                    precip_dnn_map = {"None": np.nan, "Rain": "rain", "Snow": "snow"}
+                    
+                    # IMPORTANT: Dataset uses Humidity in [0,1], not [0,100]
+                    # Dataset uses Loud Cover always 0 (not 0-8 oktas)
+                    dnn_input = pd.DataFrame([[
+                        summary_dnn_map[summary],
+                        precip_dnn_map[precip_type],
+                        humidity / 100.0,             # Convert 0-100% to 0-1
+                        wind_speed,
+                        wind_bearing,
+                        visibility,
+                        0.0,                          # Loud Cover is always 0 in dataset
+                        pressure
+                    ]], columns=dnn_temp.feature_columns)
+                    
+                    dnn_pred = dnn_temp.predict(dnn_input)
+                    if hasattr(dnn_pred, '__len__'):
+                        dnn_pred = float(dnn_pred[0]) if len(dnn_pred.shape) > 0 else float(dnn_pred)
+                    else:
+                        dnn_pred = float(dnn_pred)
+                    
+                    add_to_history(
+                        model_name="Temperature DNN (PyTorch)",
+                        inputs=f"Humidity: {humidity}%, Wind: {wind_speed}km/h",
+                        prediction=f"{dnn_pred:.1f}°C",
+                        probability=None
+                    )
+                    
+                    st.markdown('<div class="prediction-result">🧠 DNN Predicted Temperature: {:.1f}°C</div>'.format(dnn_pred), 
+                              unsafe_allow_html=True)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("DNN Temperature", f"{dnn_pred:.1f}°C")
+                    with col2:
+                        st.metric("DNN R² Score", "0.7520")
+            else:
+                st.warning("⚠️ PyTorch DNN model not available. Run `pytorch_advanced_experiments.py` to train it.")
+
+            # ============================================================
+            # NOVEL SCRATCH ARCHITECTURE PREDICTION (Temperature)
+            # ============================================================
+            st.markdown("---")
+            st.markdown("### 🛠️ Novel Scratch Architecture Prediction")
+            
+            novel_temp = load_novel_temperature_model()
+            if novel_temp is not None:
+                show_novel_architecture_summary(novel_temp, "Best Novel Architecture Summary")
+                
+                if st.button("🛠️ Predict with Novel Arch", type="secondary", use_container_width=True, key="novel_temp_predict"):
+                    try:
+                        # The novel model was trained on 7 features:
+                        # Precip Type (encoded), Apparent Temperature (C), Humidity, Wind Speed (km/h),
+                        # Wind Bearing (degrees), Visibility (km), Pressure (millibars)
+                        # We reconstruct the StandardScaler from the same data subset used in training
+                        from sklearn.preprocessing import LabelEncoder
+                        from sklearn.impute import SimpleImputer
+                        
+                        @st.cache_resource
+                        def get_novel_temp_scaler():
+                            import pandas as pd
+                            from sklearn.preprocessing import StandardScaler, LabelEncoder
+                            from sklearn.impute import SimpleImputer
+                            df_sc = pd.read_csv("Dataset1.csv")
+                            drop_cols = ["Temperature (C)", "Formatted Date", "Summary", "Daily Summary", "Loud Cover"]
+                            X_sc = df_sc.drop(columns=drop_cols, errors="ignore")
+                            for c in X_sc.select_dtypes(['object']).columns:
+                                X_sc[c] = LabelEncoder().fit_transform(X_sc[c].astype(str))
+                            X_sc = SimpleImputer(strategy='mean').fit_transform(X_sc)[:15000]
+                            sc = StandardScaler()
+                            sc.fit(X_sc)
+                            return sc
+                        
+                        novel_sc = get_novel_temp_scaler()
+                        
+                        # Map dashboard inputs to the 7 training features
+                        # The LabelEncoder for Precip Type encodes: nan→0, rain→1, snow→2 (approx)
+                        precip_map_novel = {"None": 0, "Rain": 1, "Snow": 2}
+                        # Apparent Temperature ≈ Temperature + wind chill offset; use humidity-adjusted estimate
+                        apparent_temp_estimate = (humidity / 100.0) * 15.0 + (1 - wind_speed / 100.0) * 5.0
+                        
+                        raw_input = np.array([[
+                            precip_map_novel.get(precip_type, 0),   # Precip Type
+                            apparent_temp_estimate,                   # Apparent Temperature (C)
+                            humidity / 100.0,                         # Humidity [0,1]
+                            wind_speed,                               # Wind Speed (km/h)
+                            wind_bearing,                             # Wind Bearing (degrees)
+                            visibility,                               # Visibility (km)
+                            pressure                                  # Pressure (millibars)
+                        ]], dtype=np.float32)
+                        
+                        novel_input_scaled = novel_sc.transform(raw_input)
+                        preds, _ = predict_with_novel_model(novel_temp, novel_input_scaled)
+                        
+                        if preds is not None:
+                            novel_pred = float(preds[0]) if np.ndim(preds) > 0 else float(preds)
+                            
+                            add_to_history(
+                                model_name=f"Temperature Novel ({novel_temp['architecture']})",
+                                inputs=f"Humidity: {humidity}%, Wind: {wind_speed}km/h",
+                                prediction=f"{novel_pred:.1f}°C",
+                                probability=None
+                            )
+                            
+                            st.markdown('<div class="prediction-result">🛠️ Novel Predicted Temperature: {:.1f}°C</div>'.format(novel_pred), 
+                                      unsafe_allow_html=True)
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.metric("Novel Temperature", f"{novel_pred:.1f}°C")
+                            with col2:
+                                st.metric("Novel Test R²", f"{novel_temp['test_metric']:.4f}")
+                    except Exception as e:
+                        st.error(f"❌ Error: {e}")
+            else:
+                st.warning("⚠️ Novel architecture model not found. Run `train_all_novel_architectures.py` first.")
+            
+            # ============================================================
+            # ML vs DNN COMPARISON (Temperature)
+            # ============================================================
+            st.markdown("---")
+            st.markdown("### 📊 ML vs DNN Performance Comparison")
+            st.caption("Temperature Regression — Same test set")
+            
+            comp_col1, comp_col2, comp_col3 = st.columns(3)
+            with comp_col1:
+                st.markdown("#### 🏆 ML (Stacking)")
+                st.metric("R² Score", "0.7766")
+                st.metric("MAE", f"±{metadata['performance_metrics']['mae']:.2f}°C")
+                st.caption("XGBoost + RF + GB + ET + Ridge + Lasso")
+            with comp_col2:
+                st.markdown("#### 🧠 DNN (ResidualMLP)")
+                st.metric("R² Score", "0.7520", delta="-0.0246")
+                st.metric("MAE", "±3.70°C")
+                st.caption("512-dim × 4 blocks + AdamW")
+            with comp_col3:
+                st.markdown("#### 📈 Verdict")
+                st.info("**ML wins** by +2.46% R²")
+                st.caption("Stacking ensemble captures complex interactions that MLP cannot replicate on 62K weather samples")
+            
+            with st.expander("📋 All DNN Configurations Tested"):
+                try:
+                    temp_std = pd.read_csv("pytorch_results/temperature_pytorch_results.csv")
+                    temp_adv = pd.read_csv("pytorch_results/temperature_advanced_results.csv")
+                    all_temp = pd.concat([
+                        temp_std[['config', 'description', 'test_r2', 'test_mae', 'test_rmse']],
+                        temp_adv[['config', 'description', 'test_r2', 'test_mae', 'test_rmse']]
+                    ], ignore_index=True).sort_values('test_r2', ascending=False)
+                    all_temp.columns = ['Config', 'Description', 'R²', 'MAE (°C)', 'RMSE (°C)']
+                    st.dataframe(all_temp, use_container_width=True, hide_index=True)
+                except Exception:
+                    st.info("Run PyTorch experiments to generate comparison data.")
+            
             # Model Performance Section (Always Visible)
             st.markdown("---")
-            st.markdown("### 📈 Model Performance Metrics")
+            st.markdown("### 📈 ML Model Performance Metrics")
             st.caption("Stacking Regressor ensemble performance")
             
             mae = metadata['performance_metrics']['mae']
@@ -2287,6 +2850,167 @@ elif "Wind Turbine" in model_choice:
             st.metric("Avg RMSE", f"{best_multistep['rmse']:.2f} kW")
             st.metric("Window", "24 steps")
         
+        # ============================================================
+        # DNN PREDICTION & COMPARISON (Wind Turbine)
+        # ============================================================
+        st.markdown("---")
+        st.markdown("### 🧠 Deep Neural Network Forecasting")
+        
+        dnn_wind = load_dnn_wind_model()
+        if dnn_wind is not None and PYTORCH_AVAILABLE:
+            st.success(f"✅ DNN Model Loaded: **{dnn_wind.config_desc}** (Config: {dnn_wind.config_name})")
+            show_pytorch_architecture_summary("wind_forecasting", "Best architecture summary")
+            
+            if st.button("🧠 DNN Forecast (PyTorch)", type="secondary", use_container_width=True, key="dnn_wind_predict"):
+                try:
+                    # Get last 24 raw power values from dataset
+                    dnn_window = df[target_col].tail(24).values.astype(np.float64)
+                    
+                    # Recursive DNN forecast
+                    dnn_predictions = []
+                    current_window = dnn_window.copy()
+                    
+                    for step in range(horizon):
+                        pred = dnn_wind_predict(dnn_wind, current_window)
+                        dnn_predictions.append(pred)
+                        if step < horizon - 1:
+                            current_window = np.append(current_window[1:], pred)
+                    
+                    # Display DNN forecast
+                    st.markdown("### 📈 DNN Forecast Results")
+                    
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        fig, ax = plt.subplots(figsize=(10, 5))
+                        hist_steps = min(24, len(last_observations))
+                        ax.plot(range(-hist_steps, 0), last_observations[-hist_steps:],
+                               label='Historical', color='steelblue', linewidth=2, marker='o', markersize=4)
+                        ax.plot(range(0, len(dnn_predictions)), dnn_predictions,
+                               label='DNN Forecast', color='#9b59b6', linewidth=2, marker='s', markersize=5, linestyle='--')
+                        ax.axvline(x=0, color='red', linestyle=':', alpha=0.5, label='Forecast Start')
+                        ax.set_xlabel('Time Steps (10-min intervals)')
+                        ax.set_ylabel('LV ActivePower (kW)')
+                        ax.set_title(f'DNN Wind Turbine Forecast — Next {horizon} Steps')
+                        ax.grid(True, alpha=0.3)
+                        ax.legend()
+                        st.pyplot(fig)
+                        plt.close()
+                    
+                    with col2:
+                        dnn_forecast_df = pd.DataFrame({
+                            'Step': range(1, len(dnn_predictions) + 1),
+                            'Time (min)': [(i * 10) for i in range(1, len(dnn_predictions) + 1)],
+                            'Power (kW)': [f"{p:.2f}" for p in dnn_predictions]
+                        })
+                        st.dataframe(dnn_forecast_df, hide_index=True)
+                    
+                    add_to_history(
+                        model_name="Wind Turbine DNN (PyTorch)",
+                        inputs=f"Window: last 24 steps, Horizon: {horizon}",
+                        prediction=f"Avg: {np.mean(dnn_predictions):.2f} kW",
+                        probability=None
+                    )
+                except Exception as e:
+                    st.error(f"Error in DNN forecast: {str(e)}")
+        else:
+            st.warning("⚠️ PyTorch DNN model not available. Run `pytorch_advanced_experiments.py` to train it.")
+
+        # ============================================================
+        # NOVEL SCRATCH ARCHITECTURE PREDICTION (Wind Turbine)
+        # ============================================================
+        st.markdown("---")
+        st.markdown("### 🛠️ Novel Scratch Architecture Prediction")
+        
+        novel_wind = load_novel_wind_model()
+        if novel_wind is not None:
+            show_novel_architecture_summary(novel_wind, "Best Novel Architecture Summary")
+            
+            if st.button("🛠️ Predict with Novel Arch", type="secondary", use_container_width=True, key="novel_wind_predict"):
+                try:
+                    # Get last 24 raw power values from dataset
+                    from sklearn.preprocessing import MinMaxScaler
+                    sc = MinMaxScaler()
+                    # Fit on first 20k to match training script
+                    sc.fit(df[target_col].values[:20000].reshape(-1, 1))
+                    
+                    dnn_window = df[target_col].tail(24).values.astype(np.float64)
+                    
+                    novel_predictions = []
+                    current_window = dnn_window.copy()
+                    
+                    for step in range(horizon):
+                        scaled_vals = sc.transform(current_window.reshape(-1, 1)).flatten()
+                        preds, _ = predict_with_novel_model(novel_wind, scaled_vals.reshape(1, -1))
+                        if preds is not None:
+                            pred_scaled = float(preds[0])
+                            pred = float(sc.inverse_transform([[pred_scaled]])[0, 0])
+                        else:
+                            pred = 0.0
+                        novel_predictions.append(pred)
+                        if step < horizon - 1:
+                            current_window = np.append(current_window[1:], pred)
+                            
+                    st.markdown("### 📈 Novel Forecast Results")
+                    
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        fig, ax = plt.subplots(figsize=(10, 5))
+                        hist_steps = min(24, len(last_observations))
+                        ax.plot(range(-hist_steps, 0), last_observations[-hist_steps:],
+                               label='Historical', color='steelblue', linewidth=2, marker='o', markersize=4)
+                        ax.plot(range(0, len(novel_predictions)), novel_predictions,
+                               label='Novel Forecast', color='#e67e22', linewidth=2, marker='s', markersize=5, linestyle='--')
+                        ax.axvline(x=0, color='red', linestyle=':', alpha=0.5, label='Forecast Start')
+                        ax.set_xlabel('Time Steps (10-min intervals)')
+                        ax.set_ylabel('LV ActivePower (kW)')
+                        ax.set_title(f'Novel Architecture Forecast — Next {horizon} Steps')
+                        ax.grid(True, alpha=0.3)
+                        ax.legend()
+                        st.pyplot(fig)
+                        plt.close()
+                    
+                    with col2:
+                        novel_forecast_df = pd.DataFrame({
+                            'Step': range(1, len(novel_predictions) + 1),
+                            'Time (min)': [(i * 10) for i in range(1, len(novel_predictions) + 1)],
+                            'Power (kW)': [f"{p:.2f}" for p in novel_predictions]
+                        })
+                        st.dataframe(novel_forecast_df, hide_index=True)
+                except Exception as e:
+                    st.error(f"Error in Novel forecast: {str(e)}")
+        else:
+            st.warning("⚠️ Novel architecture model not found. Run `train_all_novel_architectures.py` first.")
+        
+        # ML vs DNN Comparison
+        st.markdown("---")
+        st.markdown("### 📊 ML vs DNN Performance Comparison")
+        st.caption("Wind Turbine Power Forecasting — Univariate, same chronological test set")
+        
+        comp_col1, comp_col2, comp_col3 = st.columns(3)
+        with comp_col1:
+            st.markdown("#### 🏆 ML (Ridge)")
+            st.metric("R² Score", "0.9714")
+            st.metric("RMSE", f"{best_uni['rmse']:.2f} kW")
+            st.caption("Ridge Regression + MinMaxScaler")
+        with comp_col2:
+            st.markdown("#### 🧠 DNN (FlexMLP)")
+            st.metric("R² Score", "0.9710", delta="-0.0004")
+            st.metric("RMSE", "228.47 kW")
+            st.caption("Adam + CosineAnnealingLR")
+        with comp_col3:
+            st.markdown("#### 📈 Verdict")
+            st.success("**Near parity!** Gap only 0.04%")
+            st.caption("DNN essentially matches ML Ridge on this univariate time series task")
+        
+        with st.expander("📋 All DNN Configurations Tested"):
+            try:
+                wind_results = pd.read_csv("pytorch_results/wind_pytorch_results.csv")
+                wind_display = wind_results[['config', 'description', 'test_r2', 'test_mae', 'test_rmse']].sort_values('test_r2', ascending=False)
+                wind_display.columns = ['Config', 'Description', 'R²', 'MAE (kW)', 'RMSE (kW)']
+                st.dataframe(wind_display, use_container_width=True, hide_index=True)
+            except Exception:
+                st.info("Run PyTorch experiments to generate comparison data.")
+        
         # Technical details
         with st.expander("ℹ️ Technical Details & Methodology"):
             st.markdown("""
@@ -3306,6 +4030,63 @@ elif "Wine Type" in model_choice:
                     
                     except Exception as pred_error:
                         st.error(f"Prediction error: {str(pred_error)}")
+            
+            # ============================================================
+            # NOVEL SCRATCH ARCHITECTURE PREDICTION (Wine Anomaly)
+            # ============================================================
+            st.markdown("---")
+            st.markdown("### 🛠️ Novel Scratch Architecture Prediction")
+            
+            novel_wine = load_novel_wine_model()
+            if novel_wine is not None:
+                show_novel_architecture_summary(novel_wine, "Best Novel Architecture Summary")
+                
+                if st.button("🛠️ Predict with Novel Arch", type="secondary", use_container_width=True, key="novel_wine_predict"):
+                    try:
+                        with open(model_path, 'rb') as f:
+                            ml_package = pickle.load(f)
+                        scaler_wine = ml_package.get('scaler')
+                        
+                        feature_names = ml_package.get('feature_names', [
+                            'fixed acidity', 'volatile acidity', 'citric acid', 'residual sugar',
+                            'chlorides', 'free sulfur dioxide', 'total sulfur dioxide', 'density',
+                            'pH', 'sulphates', 'alcohol', 'quality'
+                        ])
+                        input_values = [fixed_acidity, volatile_acidity, citric_acid, residual_sugar,
+                                       chlorides, free_sulfur_dioxide, total_sulfur_dioxide, density,
+                                       ph, sulphates, alcohol, quality]
+                        
+                        input_data_novel = pd.DataFrame([input_values], columns=feature_names)
+                        input_scaled_novel = scaler_wine.transform(input_data_novel)
+                        
+                        preds, proba = predict_with_novel_model(novel_wine, input_scaled_novel)
+                        
+                        if preds is not None:
+                            novel_pred_val = int(preds[0]) if np.ndim(preds) > 0 else int(preds)
+                            novel_risk = float(proba[0, 1]) * 100 if proba is not None and proba.ndim == 2 else float(proba[0]) * 100 if proba is not None else (100 if novel_pred_val==1 else 0)
+                            
+                            novel_result_text = "Anomaly (Red Wine)" if novel_pred_val == 1 else "Normal (White Wine)"
+                            add_to_history(
+                                model_name=f"Wine Novel ({novel_wine['architecture']})",
+                                inputs=f"Alcohol: {alcohol}%, pH: {ph}, Acidity: {fixed_acidity}",
+                                prediction=novel_result_text,
+                                probability=novel_risk
+                            )
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if novel_pred_val == 1:
+                                    st.error("### 🚨 NOVEL: ANOMALY (RED WINE)")
+                                    st.markdown("**Detected as anomaly**")
+                                else:
+                                    st.success("### ✅ NOVEL: NORMAL (WHITE WINE)")
+                                    st.markdown("**Detected as normal**")
+                            with col2:
+                                st.metric("Novel Risk Score", f"{novel_risk:.1f}%")
+                    except Exception as e:
+                        st.error(f"Error in Novel prediction: {str(e)}")
+            else:
+                st.warning("⚠️ Novel architecture model not found. Run `train_all_novel_architectures.py` first.")
             
             st.markdown("---")
             

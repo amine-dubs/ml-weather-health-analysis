@@ -1,0 +1,4 @@
+config,description,lr,weight_decay,batch_size,max_epochs,patience,val_auc,test_auc,test_acc,test_f1,epochs_run,time_s
+scratch_flex_small,"ScratchFlexMLP hidden=[64,32], dropout=0.1",0.01,0.001,32,80,12,0.953685,0.942035,0.89916,0.905512,35,4.9
+scratch_flex_256_128,"ScratchFlexMLP hidden=[256,128], dropout=0.0",0.01,0.0001,32,120,16,0.953355,0.940051,0.865546,0.873016,30,3.0
+scratch_residual_128x2,"ScratchResidualMLP hidden=128, blocks=2, dropout=0.1",0.005,0.001,32,120,16,0.953465,0.928855,0.878151,0.88716,28,8.0

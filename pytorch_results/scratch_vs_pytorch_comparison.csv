@@ -1,0 +1,4 @@
+task,metric,pt_adamw_config,pt_adamw_value,adv_residual_config,adv_residual_value,scratch_best_config,scratch_best_value,overall_best_label,overall_best_value
+heart_classification,test_auc,pt_adamw,0.948484,adv_residual_wide,0.951672,scratch_flex_small,0.942035,adv_residual_wide,0.951672
+temperature_regression,test_r2,pt_adamw,0.748625,adv_residual_wide,0.752036,scratch_temp_residual_128x2,0.7347,adv_residual_wide,0.752036
+wind_forecasting,test_r2,pt_adamw,0.97082,n/a,,scratch_wind_flex_256_128,0.970979,pt_scheduler_cosine,0.971016
